@@ -1,0 +1,176 @@
+.crae-demo-wrap {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #0f172a;
+    margin: 20px auto;
+    max-width: 1220px;
+}
+
+.crae-demo-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    color: #ffffff;
+    padding: 18px 22px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.crae-demo-banner h2 {
+    margin: 0 0 4px 0;
+    font-size: 1.25rem;
+    color: #ffffff;
+}
+
+.crae-demo-banner p {
+    margin: 0;
+    font-size: 13px;
+    color: #cbd5e1;
+}
+
+.crae-demo-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 18px;
+    background: #f1f5f9;
+    border-left: 1px solid #cbd5e1;
+    border-right: 1px solid #cbd5e1;
+}
+
+.crae-preset-btn {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #1e293b;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.crae-preset-btn.is-active {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+.crae-demo-grid {
+    display: grid;
+    grid-template-columns: minmax(340px, 1.05fr) minmax(340px, 0.95fr);
+    border: 1px solid #cbd5e1;
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+@media (max-width: 960px) {
+    .crae-demo-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.crae-demo-left {
+    padding: 20px;
+    border-right: 1px solid #e2e8f0;
+}
+
+.crae-demo-right {
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+}
+
+.crae-code-tabs {
+    display: flex;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    flex-wrap: wrap;
+}
+
+.crae-code-tab {
+    background: transparent;
+    color: #94a3b8;
+    border: none;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.crae-code-tab.is-active {
+    color: #38bdf8;
+    border-bottom-color: #38bdf8;
+    background: #0f172a;
+}
+
+.crae-code-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: #0b1220;
+    border-bottom: 1px solid #1e293b;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.crae-copy-code-btn {
+    background: #1e293b;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.crae-copy-code-btn:hover {
+    background: #334155;
+}
+
+.crae-code-pre {
+    margin: 0;
+    padding: 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow: auto;
+    max-height: 560px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #e2e8f0;
+}
+
+.crae-score-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+}
+
+.crae-score-card {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 10px;
+    background: #f8fafc;
+}
+
+.crae-score-card strong {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.crae-score-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
