@@ -140,6 +140,7 @@ final class AssetLoader
             'scoring' => [
                 'standardPercentiles' => AssessmentScorer::STANDARD_SCORE_PERCENTILES,
                 'scaledPercentiles'   => AssessmentScorer::SCALED_SCORE_PERCENTILES,
+                'tScorePercentiles'   => AssessmentScorer::T_SCORE_PERCENTILES,
                 'standardRanges'      => [
                     ['max' => 69,  'label' => 'Significantly Below Average', 'stars' => '**', 'color' => '#e06c6c'],
                     ['max' => 79,  'label' => 'Well Below Average',          'stars' => '*',  'color' => '#ea9999'],
@@ -161,6 +162,27 @@ final class AssetLoader
                     ['max' => 14,  'label' => 'Above Average',               'stars' => ''],
                     ['max' => 16,  'label' => 'Well Above Average',          'stars' => ''],
                     ['max' => 999, 'label' => 'Significantly Above Average', 'stars' => ''],
+                ],
+                'behavioralRanges'    => [
+                    ['max' => 39,  'label' => 'Low',                         'stars' => '',   'color' => ''],
+                    ['max' => 59,  'label' => 'Average',                     'stars' => '',   'color' => ''],
+                    ['max' => 64,  'label' => 'High Average',                'stars' => '',   'color' => '#ffe699'],
+                    ['max' => 69,  'label' => 'Elevated',                    'stars' => '*',  'color' => '#ea9999'],
+                    ['max' => 999, 'label' => 'Very Elevated',               'stars' => '**', 'color' => '#e06c6c'],
+                ],
+                'vinelandStandardRanges' => [
+                    ['max' => 70,  'label' => 'Low',                         'stars' => '**', 'color' => '#e06c6c'],
+                    ['max' => 85,  'label' => 'Moderately Low',              'stars' => '*',  'color' => '#ffe699'],
+                    ['max' => 114, 'label' => 'Adequate',                    'stars' => '',   'color' => ''],
+                    ['max' => 129, 'label' => 'Moderately High',             'stars' => '',   'color' => '#d9ead3'],
+                    ['max' => 999, 'label' => 'High',                        'stars' => '',   'color' => '#b6d7a8'],
+                ],
+                'vinelandSubdomainRanges' => [
+                    ['max' => 9,   'label' => 'Low',                         'stars' => '**', 'color' => '#e06c6c'],
+                    ['max' => 12,  'label' => 'Moderately Low',              'stars' => '*',  'color' => '#ffe699'],
+                    ['max' => 17,  'label' => 'Adequate',                    'stars' => '',   'color' => ''],
+                    ['max' => 20,  'label' => 'Moderately High',             'stars' => '',   'color' => '#d9ead3'],
+                    ['max' => 999, 'label' => 'High',                        'stars' => '',   'color' => '#b6d7a8'],
                 ],
             ],
         ];

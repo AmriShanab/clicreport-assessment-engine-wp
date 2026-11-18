@@ -358,6 +358,76 @@
             return 'Significantly Above Average';
         },
 
+        getTScorePercentile: function(score) {
+            if(score === null || score === undefined || score === '' || isNaN(score)) {
+                return '';
+            }
+
+            var num = Math.round(Number(score));
+            if(num < 1) return "<1";
+            if(num > 99) return '>99';
+            var sc = getScoringConfig();
+            var map = (sc && sc.tScorePercentiles) || {};
+            return map[num] !== undefined ? String(map[num]) : '';
+        },
+
+        getBehavioralDescriptor: function(score) {
+            if(score === null || score === undefined || score === '' || isNaN(score)){
+                return '';
+            }
+
+            var num = Number(score);
+            var sc = getScoringConfig();
+            var ranges = (sc && sc.behavioralRanges) || [
+                {max: 39, label: 'low'},
+                {max: 59, label: 'Average'},
+                {max: 64, label: 'High Average'},
+                {max: 69, label: 'Elevated'},
+                {max: 999, label: 'Very Elevated'}
+            ];
+
+            for(var i = 0; i < ranges.length; i++){
+                if(num <= ranges[i].max){
+                    return ranges[i].label;
+                }
+            }
+            return 'Very Elevated';
+        },
+
+        getVinelandDescriptor: function (score, isSubdomain) {
+            if(score === null || score === undefined || score === '' || isNaN(score)){
+                return '';
+            }
+
+            var num = Number(score);
+            var sc = getScoringConfig();
+            var ranges;
+            if(isSubdomain){
+                ranges = (sc && sc.vinelandSubdomainRanges) || [
+                    {max: 9, label: 'Low'},
+                    {max: 12, label: 'Moderately low'},
+                    {max: 17, label: 'Adequate'},
+                    {max: 20, label: 'Moderately High'},
+                    {max: 999, label: 'High'}
+                ];
+            } else {
+                ranges = (sc && sc.vinelandStandardRanges) || [
+                    {max: 70, label: 'Low'},
+                    {max: 85, label: 'Moderately low'},
+                    {max: 114, label: 'Adequate'},
+                    {max: 129, label: 'Moderately High'},
+                    {max: 999, label: 'High'}
+                ];
+            }
+
+            for (var i = 0; i < ranges.length; i++){
+                if(num <= ranges[i].max){
+                    return ranges[i].label;
+                }
+            }
+            return 'High';
+        },
+
         getBellCurvePercentage: function (score) {
             if (score === null || score === undefined || score === '' || isNaN(score)) {
                 return 0;
@@ -448,8 +518,12 @@
     ClicReportAPI.getBellCurvePercentage = Scoring.getBellCurvePercentage;
     ClicReportAPI.updateBellCurveItem = Scoring.updateBellCurveItem;
     ClicReportAPI.bindAssessmentTable = Scoring.bindAssessmentTable;
+    ClicReportAPI.getTScorePercentile = Scoring.getTScorePercentile;
+    ClicReportAPI.getBehavioralDescriptor = Scoring.getBehavioralDescriptor;
+    ClicReportAPI.getVinelandDescriptor = Scoring.getVinelandDescriptor;
 
     window.ClicReportAPI = ClicReportAPI;
+    window.CraeClient = ClicReportAPI;
 
     // Auto-bind shortcode shells rendered by [clicreport_template] & [clicreport_sandbox]
     document.addEventListener('DOMContentLoaded', function () {

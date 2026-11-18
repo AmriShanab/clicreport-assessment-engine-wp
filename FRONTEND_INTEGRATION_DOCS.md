@@ -6,7 +6,7 @@ This guide is designed for the frontend development team to quickly understand a
 
 ## 1. What is this Plugin?
 
-The **ClicReport Assessment & Clinical Narrative Engine** is an enterprise-grade WordPress plugin (`v1.0.0`) that centralizes psychometric scoring, clinical rule evaluation, and narrative report generation for psychoeducational assessment templates (such as BASC-3, WISC-V, BRIEF-2, Conners-4, SCQ, and 200+ others).
+The **ClicReport Assessment & Clinical Narrative Engine** is an enterprise-grade WordPress plugin (`v1.0.4`) that centralizes psychometric scoring, clinical rule evaluation, and narrative report generation for psychoeducational assessment templates (such as BASC-3, WISC-V, BRIEF-2, Conners-4, SCQ, and 200+ others).
 
 Previously, each assessment template had hundreds of lines of duplicated JavaScript calculation logic, hardcoded narrative strings, and custom table DOM mutations. This plugin offloads all scoring math, multi-rater consistency evaluation, clinical classification, and text generation to a standardized, server-side REST API.
 
@@ -91,15 +91,15 @@ if (function_exists('crae')) {
 
 This automatically injects:
 
-1. `crae-api-client.js`
-2. The global `window.craeConfig` configuration object with image asset URLs:
+1. `crae-api-client.js` exposing `window.CraeClient` (and `window.ClicReportAPI`).
+2. The global `window.craeConfig` configuration object with image asset URLs and psychometric normative tables:
    ```js
    window.craeConfig = {
      restUrl: "https://your-site.com/wp-json/clicreport/v1/reports/generate",
      templatesUrl: "https://your-site.com/wp-json/clicreport/v1/templates",
      nonce: "1a2b3c4d5e", // WordPress REST nonce
      isLoggedIn: true,
-     version: "1.0.0",
+     version: "1.0.4",
      imagesUrl:
        "https://your-site.com/wp-content/plugins/clicreport-assessment-engine/assets/images/",
      images: {
@@ -118,6 +118,16 @@ This automatically injects:
        bellCurveEmpty:
          "https://your-site.com/.../assets/images/bell-curve-empty.jpg",
      },
+     scoring: {
+       standardPercentiles: { 40: "<0.1", ..., 100: "50", ..., 160: ">99.9" },
+       scaledPercentiles:   { 1: "0.1", ..., 10: "50", ..., 19: "99.9" },
+       tScorePercentiles:   { 1: "<1", ..., 50: "50", ..., 99: ">99" },
+       standardRanges:      [ { max: 69, label: "Significantly Below Average", stars: "**", color: "#e06c6c" }, ... ],
+       scaledRanges:        [ { max: 3, label: "Significantly Below Average", stars: "**" }, ... ],
+       behavioralRanges:    [ { max: 39, label: "Low" }, { max: 59, label: "Average" }, { max: 64, label: "High Average" }, { max: 69, label: "Elevated", stars: "*" }, { max: 999, label: "Very Elevated", stars: "**" } ],
+       vinelandStandardRanges:  [ { max: 70, label: "Low", stars: "**" }, { max: 85, label: "Moderately Low", stars: "*" }, { max: 114, label: "Adequate" }, { max: 129, label: "Moderately High" }, { max: 999, label: "High" } ],
+       vinelandSubdomainRanges: [ { max: 9, label: "Low", stars: "**" }, { max: 12, label: "Moderately Low", stars: "*" }, { max: 17, label: "Adequate" }, { max: 20, label: "Moderately High" }, { max: 999, label: "High" } ]
+     }
    };
    ```
 
@@ -126,6 +136,9 @@ This automatically injects:
 When the user clicks the "Generate Narrative" button, call:
 
 ```js
+// Both window.CraeClient and window.ClicReportAPI are available:
+window.CraeClient.generateReport(payload);
+// or
 window.ClicReportAPI.generateReport(payload);
 ```
 
@@ -198,7 +211,173 @@ window.ClicReportAPI.copyText("#narrative-container").then(function () {
 
 ---
 
-## 7. Example JavaScript Function for Frontend Files
+## 7. Live Psychometric Scoring & Percentile Lookup SDK (Client-Side)
+
+In cognitive, achievement, and psychological assessment templates (e.g. WISC-V, WAIS-IV, WIAT-4, WJ-IV, KTEA-3), evaluators expect live updates as they type scores into the table before generating the final report:
+- Percentile rank updates immediately (e.g. `100` &rarr; `50`, `130` &rarr; `98`).
+- Qualitative descriptor updates immediately (e.g. `Average`, `Well Above Average`).
+- Bell curve bar width adjusts immediately to reflect the score position.
+
+### The Problem in Legacy Templates
+Previously, theme templates manually declared:
+1. A **121-line hardcoded JavaScript array** (`percentile_lookup['40'] = '<1'; ... percentile_lookup['160'] = '<99.9';`).
+2. An extensive `if...else` chain for subtest scaled scores 1–19.
+3. An extensive `if...else` chain for composite standard scores.
+4. Up to 15 manual `.change()` event listeners repeating the same calculation code for every field.
+
+### The Solution: Centralized SDK Methods
+All normative psychometric transformations are centralized inside `crae-api-client.js` and hydrated by `AssessmentScorer.php`. Frontend developers can access these methods directly on `window.CraeClient` (or `window.ClicReportAPI`):
+
+| Method | Parameters | Return Value | Example Battery | Example Call & Output |
+| :--- | :--- | :--- | :--- | :--- |
+| `CraeClient.getStandardPercentile(score)` | `score` (40–160) | Percentile string (`"<1"`, `"50"`, `"98"`, `"<99.9"`) | WISC-V, WAIS-IV, WIAT-4, WJ-IV | `CraeClient.getStandardPercentile(100)` &rarr; `"50"` |
+| `CraeClient.getScaledPercentile(score)` | `score` (1–19) | Percentile string (`"<1"`, `"50"`, `"91"`, `">99"`) | Subtests (WISC, WAIS, NEPSY) | `CraeClient.getScaledPercentile(14)` &rarr; `"91"` |
+| `CraeClient.getTScorePercentile(score)` | `score` (1–99) | Percentile string (`"<1"`, `"50"`, `"84"`, `">99"`) | BOT-2, DAS-II subtests, RIAS-2, EDDT | `CraeClient.getTScorePercentile(60)` &rarr; `"84"` |
+| `CraeClient.getCompositeDescriptor(score)` | `score` (Standard score) | Cognitive range label string | WISC-V, WAIS-IV, WJ-IV, KTEA-3 | `CraeClient.getCompositeDescriptor(130)` &rarr; `"Well Above Average"` |
+| `CraeClient.getSubtestDescriptor(score)` | `score` (1–19) | Subtest range label string | Scaled subtests | `CraeClient.getSubtestDescriptor(4)` &rarr; `"Well Below Average"` |
+| `CraeClient.getBehavioralDescriptor(score)` | `score` (T-Score) | Behavioral label (`Low`, `Average`, `Elevated`...) | Conners-3/4, CDI-2, MASC-2, BASC-3 | `CraeClient.getBehavioralDescriptor(66)` &rarr; `"Elevated"` |
+| `CraeClient.getVinelandDescriptor(score, isSub)` | `score`, `isSubdomain` (bool) | Adaptive label (`Low`, `Adequate`, `High`...) | Vineland-3 Domain & Subdomains | `CraeClient.getVinelandDescriptor(11, true)` &rarr; `"Moderately Low"` |
+| `CraeClient.getBellCurvePercentage(score)` | `score` (40–160) | Percentage float (0.0 to 100.0) | Bell curve bars | `CraeClient.getBellCurvePercentage(100)` &rarr; `50` |
+| `CraeClient.updateBellCurveItem(scaleId, score)` | `scaleId` (string), `score` | Updates width on `.{scaleId}_bar` | Interactive bell curve charts | `CraeClient.updateBellCurveItem('fsiq', 115)` |
+| `CraeClient.bindAssessmentTable(selector)` | `selector` (CSS selector) | Auto-attaches listeners to all table inputs | Any cognitive/academic table | `CraeClient.bindAssessmentTable('#table-cells')` |
+
+---
+
+### Implementation Instructions for Frontend Templates
+
+#### Step 1: Remove the Legacy Hardcoded Array
+Open your assessment template file (`report-*.php`) and **delete the entire 121-line array**:
+```javascript
+// DELETE THIS ENTIRE BLOCK:
+var percentile_lookup = [];
+percentile_lookup['40'] = '<1';
+...
+percentile_lookup['160'] = '<99.9';
+```
+
+#### Step 2: Implement Live Updates by Battery Type
+
+##### Battery Type 1: Standard Cognitive & Academic (WISC-V, WAIS-IV, WIAT-4, WJ-IV, KTEA-3)
+```javascript
+// 1. Subtest scaled scores (1 - 19)
+function update_subtest_score_and_descriptor(clicked_el) {
+    var val = $(clicked_el).val();
+    var row = $(clicked_el).closest('tr');
+    if (window.CraeClient) {
+        row.find('.descriptor').text(window.CraeClient.getSubtestDescriptor(val));
+        row.find('.percentile').text(window.CraeClient.getScaledPercentile(val));
+    }
+}
+
+// 2. Composite standard score descriptors (e.g. Average, Well Above Average)
+function update_composite_descriptor(clicked_el) {
+    var val = $(clicked_el).val();
+    var desc = window.CraeClient ? window.CraeClient.getCompositeDescriptor(val) : 'Average';
+    $(clicked_el).closest('tr').find('.descriptor').text(desc);
+}
+
+// 3. Composite standard score percentiles (e.g. 50, 98, <1)
+function update_composite_percentile(clicked_el) {
+    var id = $(clicked_el).attr('id');
+    var val = $(clicked_el).val();
+    var pr = window.CraeClient ? window.CraeClient.getStandardPercentile(val) : '<1';
+    $('#' + id + '_pr').text(pr);
+}
+
+// 4. Real-time Bell Curve bar width updates
+function update_bell_curve_items(clicked_el) {
+    var id = $(clicked_el).attr('id');
+    var val = $(clicked_el).val();
+    if (window.CraeClient) {
+        window.CraeClient.updateBellCurveItem(id, val);
+    }
+}
+```
+
+##### Battery Type 2: Behavioral & Emotional T-Scores (BASC-3, Conners-3/4, CDI-2, MASC-2, EDDT)
+```javascript
+// Behavioral T-Score field update (Low, Average, High Average, Elevated, Very Elevated)
+function update_behavioral_score_and_descriptor(clicked_el) {
+    var val = $(clicked_el).val();
+    var row = $(clicked_el).closest('tr');
+    if (window.CraeClient) {
+        row.find('.descriptor').text(window.CraeClient.getBehavioralDescriptor(val));
+        row.find('.percentile').text(window.CraeClient.getTScorePercentile(val));
+    }
+}
+```
+
+##### Battery Type 3: Adaptive Behavior (Vineland-3 Domain & Subdomains)
+```javascript
+// Vineland-3 Composite / Domain Standard Scores (20 - 160)
+function update_vineland_domain_descriptor(clicked_el) {
+    var val = $(clicked_el).val();
+    var row = $(clicked_el).closest('tr');
+    if (window.CraeClient) {
+        row.find('.descriptor').text(window.CraeClient.getVinelandDescriptor(val, false));
+        row.find('.percentile').text(window.CraeClient.getStandardPercentile(val));
+    }
+}
+
+// Vineland-3 Subdomain V-Scale Scores (1 - 24)
+function update_vineland_subdomain_descriptor(clicked_el) {
+    var val = $(clicked_el).val();
+    var row = $(clicked_el).closest('tr');
+    if (window.CraeClient) {
+        row.find('.descriptor').text(window.CraeClient.getVinelandDescriptor(val, true));
+    }
+}
+```
+
+##### Battery Type 4: Zero-Boilerplate Auto-Binder (`bindAssessmentTable`)
+For cognitive/academic tables, you can replace all individual event listeners with one line:
+```javascript
+$(document).ready(function () {
+    if (window.CraeClient && window.CraeClient.bindAssessmentTable) {
+        window.CraeClient.bindAssessmentTable('#table-cells');
+    }
+});
+```
+This automatically:
+1. Detects whether each input in a row is a composite (`max > 20`) or a subtest (`max <= 20`).
+2. Recalculates `.descriptor` and `.percentile` on both `input` and `change` events.
+3. Automatically adjusts the associated bell curve `.{scaleId}_bar`.
+
+---
+
+### Step 3: Integrate Server-Rendered Bell Curve Updates
+
+1. In your HTML, wrap the bell curve section in an outer wrapper:
+```html
+<div id="bell-curve-wrapper">
+    <div class="summary-title">
+        ...
+        <button class="copy-bell-curve" id="copy-bell-curve">Copy Bell Curve</button>
+    </div>
+    <div class="bell-curve" id="bell-curve">
+        ...
+    </div>
+</div>
+```
+
+2. In your report generation AJAX success callback, inject the server-generated curve HTML:
+```javascript
+var bellCurveHtml = (result.bell_curve && result.bell_curve.html) || result.bell_curve_html || '';
+if (bellCurveHtml) {
+    $('#bell-curve-wrapper').html(bellCurveHtml).show();
+}
+```
+
+3. Ensure the copy button uses delegated event binding so newly injected HTML responds to clicks:
+```javascript
+$(document).on('click', '#copy-bell-curve', function () {
+    // html2canvas capture and clipboard copy
+});
+```
+
+---
+
+## 8. Example JavaScript Function for Frontend Files
 
 Here is the clean, drop-in snippet for your template's button click event:
 
@@ -359,7 +538,7 @@ try {
 
 ---
 
-## 8. API Request Methods
+## 9. API Request Methods
 
 You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress REST API:
 
@@ -386,7 +565,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 9. Payload Structures
+## 10. Payload Structures
 
 ### A. Multi-Rater Assessments (e.g., BASC-3, BRIEF-2)
 
@@ -432,7 +611,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 10. Required & Optional Parameters
+## 11. Required & Optional Parameters
 
 ### Common Parameters
 
@@ -459,7 +638,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 11. API Response Format
+## 12. API Response Format
 
 ```json
 {
@@ -499,7 +678,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 12. Error Handling & HTTP Statuses
+## 13. Error Handling & HTTP Statuses
 
 |         Status Code         | Reason                                                                                                                                         | What Frontend Should Do                                               |
 | :-------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
@@ -516,7 +695,32 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 13. Plugin Deployment Steps on Live Site
+## 14. Incomplete Score Validation (`N/A` Check & `allow_partial`)
+
+To maintain the highest clinical standards and prevent accidental generation of incomplete reports, the backend engine validates generated narratives against unassessed or missing score placeholders (`N/A`).
+
+### Validation Rule:
+- By default, if any required score was missed or left blank such that the narrative would output an **`N/A`** range (e.g. `"rated to be in the N/A range"`), the API rejects the request and returns a **`400 Bad Request`**:
+  ```json
+  {
+    "success": false,
+    "data": {
+      "message": "Incomplete assessment data: One or more required scores are missing. Please enter all scores before generating the narrative."
+    }
+  }
+  ```
+
+### How the Frontend Handles This:
+1. **Standard Flow (Default)**: Ensure all administered subtest scores are passed in `payloadData`. If an evaluator misses a score, display the returned `message` (e.g. via alert or toast) prompting them to fill in the missing fields.
+2. **Partial Assessment Mode (`allow_partial: true`)**: If your UI supports an intentional partial assessment where only a subset of subtests was administered, pass:
+   ```javascript
+   payloadData.allow_partial = true;
+   ```
+   This instructs the engine to bypass the strict missing score check and render whatever subtests were provided.
+
+---
+
+## 15. Plugin Deployment Steps on Live Site
 
 Follow these steps to deploy and activate the plugin on the live WordPress environment:
 
@@ -604,33 +808,14 @@ if (function_exists('crae')) {
 
 ---
 
-## 14. Key Takeaways for Frontend Developers
+## 16. Key Takeaways for Frontend Developers
 
 1. **Do not format narrative text in JavaScript**: The backend outputs valid, sanitized, grammatically matched HTML in `narrative_html`. Simply inject this into `#narrative-container`.
-2. **Use the Bundled Plugin Images**: Use `CRAE_PLUGIN_URL . 'assets/images/...'` in PHP or `window.craeConfig.images` in JS instead of hardcoded `/images/` paths.
-3. **Always use `window.ClicReportAPI.generateReport(payload)`**: Avoid writing raw `fetch()` or `$.ajax()` calls so nonces, credentials, and error normalization are handled uniformly.
-
----
-
-## 11. Incomplete Score Validation (`N/A` Check & `allow_partial`)
-
-To maintain the highest clinical standards and prevent accidental generation of incomplete reports, the backend engine validates generated narratives against unassessed or missing score placeholders (`N/A`).
-
-### Validation Rule:
-- By default, if any required score was missed or left blank such that the narrative would output an **`N/A`** range (e.g. `"rated to be in the N/A range"`), the API rejects the request and returns a **`400 Bad Request`**:
-  ```json
-  {
-    "success": false,
-    "data": {
-      "message": "Incomplete assessment data: One or more required scores are missing. Please enter all scores before generating the narrative."
-    }
-  }
-  ```
-
-### How the Frontend Handles This:
-1. **Standard Flow (Default)**: Ensure all administered subtest scores are passed in `payloadData`. If an evaluator misses a score, display the returned `message` (e.g. via alert or toast) prompting them to fill in the missing fields.
-2. **Partial Assessment Mode (`allow_partial: true`)**: If your UI supports an intentional partial assessment where only a subset of subtests was administered, pass:
-   ```javascript
-   payloadData.allow_partial = true;
-   ```
-   This instructs the engine to bypass the strict missing score check and render whatever subtests were provided.
+2. **Use Centralized Scoring Methods**: Never hardcode 121-line percentile arrays or descriptor lookup `if/else` ladders in template files. Call `CraeClient` (or `ClicReportAPI`):
+   - `getStandardPercentile(score)` & `getCompositeDescriptor(score)` for cognitive/academic standard scores (40–160).
+   - `getScaledPercentile(score)` & `getSubtestDescriptor(score)` for scaled subtests (1–19).
+   - `getTScorePercentile(score)` & `getBehavioralDescriptor(score)` for behavioral T-scores (1–99).
+   - `getVinelandDescriptor(score, isSubdomain)` for Vineland-3 standard scores and v-scale subdomains.
+3. **Automate with `bindAssessmentTable()`**: For standard assessment tables, one call to `CraeClient.bindAssessmentTable('#table-cells')` auto-binds input listeners, descriptors, percentiles, and bell curve bars.
+4. **Use Bundled Plugin Images**: Use `CRAE_PLUGIN_URL . 'assets/images/...'` in PHP or `window.craeConfig.images` in JS instead of hardcoded `/images/` paths.
+5. **Always use `window.CraeClient.generateReport(payload)`**: Avoid writing raw `fetch()` or `$.ajax()` calls so nonces, credentials, and error normalization are handled uniformly.
