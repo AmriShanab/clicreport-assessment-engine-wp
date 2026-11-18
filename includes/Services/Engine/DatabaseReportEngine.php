@@ -41,7 +41,7 @@ final class DatabaseReportEngine {
         $requestId = substr( bin2hex( random_bytes( 8 ) ), 0, 16 );
 
         $templateSlug = trim(
-            (string) ( $data['template_name'] ?? ( $data['template_id'] ?? ( $data['assessment_type'] ?? 'report-basc-3-social-emotional' ) ) )
+            (string) ( $data['template_slug'] ?? ( $data['template_name'] ?? ( $data['template_id'] ?? ( $data['assessment_type'] ?? 'report-basc-3-social-emotional' ) ) ) )
         );
         if ( str_ends_with( strtolower( $templateSlug ), '.php' ) ) {
             $templateSlug = substr( $templateSlug, 0, -4 );
