@@ -8,6 +8,8 @@
 
 namespace ClicReport\AssessmentEngine\Frontend;
 
+use ClicReport\AssessmentEngine\Services\Scoring\AssessmentScorer;
+
 defined('ABSPATH') || exit;
 
 final class AssetLoader
@@ -135,6 +137,32 @@ final class AssetLoader
             ],
             'isLoggedIn'     => is_user_logged_in(),
             'version'        => CRAE_VERSION,
+            'scoring' => [
+                'standardPercentiles' => AssessmentScorer::STANDARD_SCORE_PERCENTILES,
+                'scaledPercentiles'   => AssessmentScorer::SCALED_SCORE_PERCENTILES,
+                'standardRanges'      => [
+                    ['max' => 69,  'label' => 'Significantly Below Average', 'stars' => '**', 'color' => '#e06c6c'],
+                    ['max' => 79,  'label' => 'Well Below Average',          'stars' => '*',  'color' => '#ea9999'],
+                    ['max' => 84,  'label' => 'Below Average',               'stars' => '*',  'color' => '#ffe699'],
+                    ['max' => 89,  'label' => 'Low Average',                 'stars' => '',   'color' => '#ffe699'],
+                    ['max' => 110, 'label' => 'Average',                     'stars' => '',   'color' => ''],
+                    ['max' => 115, 'label' => 'High Average',                'stars' => '',   'color' => '#d9ead3'],
+                    ['max' => 120, 'label' => 'Above Average',               'stars' => '',   'color' => '#d9ead3'],
+                    ['max' => 130, 'label' => 'Well Above Average',          'stars' => '',   'color' => '#b6d7a8'],
+                    ['max' => 999, 'label' => 'Significantly Above Average', 'stars' => '',   'color' => '#93c47d'],
+                ],
+                'scaledRanges'        => [
+                    ['max' => 3,   'label' => 'Significantly Below Average', 'stars' => '**'],
+                    ['max' => 5,   'label' => 'Well Below Average',          'stars' => '*'],
+                    ['max' => 6,   'label' => 'Below Average',               'stars' => '*'],
+                    ['max' => 7,   'label' => 'Low Average',                 'stars' => ''],
+                    ['max' => 12,  'label' => 'Average',                     'stars' => ''],
+                    ['max' => 13,  'label' => 'High Average',                'stars' => ''],
+                    ['max' => 14,  'label' => 'Above Average',               'stars' => ''],
+                    ['max' => 16,  'label' => 'Well Above Average',          'stars' => ''],
+                    ['max' => 999, 'label' => 'Significantly Above Average', 'stars' => ''],
+                ],
+            ],
         ];
     }
 }

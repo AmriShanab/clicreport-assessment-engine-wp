@@ -242,6 +242,213 @@
         }
     };
 
+    var DEFAULT_SCORING = {
+        standardRanges: [
+            { max: 69, label: 'Significantly Below Average', stars: '**', color: '#e06c6c' },
+            { max: 79, label: 'Well Below Average', stars: '*', color: '#ea9999' },
+            { max: 84, label: 'Below Average', stars: '*', color: '#ffe699' },
+            { max: 89, label: 'Low Average', stars: '', color: '#ffe699' },
+            { max: 110, label: 'Average', stars: '', color: '' },
+            { max: 115, label: 'High Average', stars: '', color: '#d9ead3' },
+            { max: 120, label: 'Above Average', stars: '', color: '#d9ead3' },
+            { max: 130, label: 'Well Above Average', stars: '', color: '#b6d7a8' },
+            { max: 999, label: 'Significantly Above Average', stars: '', color: '#93c47d' }
+        ],
+        scaledRanges: [
+            { max: 3, label: 'Significantly Below Average', stars: '**' },
+            { max: 5, label: 'Well Below Average', stars: '*' },
+            { max: 6, label: 'Below Average', stars: '*' },
+            { max: 7, label: 'Low Average', stars: '' },
+            { max: 12, label: 'Average', stars: '' },
+            { max: 13, label: 'High Average', stars: '' },
+            { max: 14, label: 'Above Average', stars: '' },
+            { max: 16, label: 'Well Above Average', stars: '' },
+            { max: 999, label: 'Significantly Above Average', stars: '' }
+        ],
+        standardPercentiles: {
+            40: '<0.1', 41: '<0.1', 42: '<0.1', 43: '<0.1', 44: '<0.1', 45: '<0.1',
+            46: '<0.1', 47: '<0.1', 48: '<0.1', 49: '<0.1', 50: '<0.1', 51: '0.1',
+            52: '0.1', 53: '0.1', 54: '0.1', 55: '0.1', 56: '0.2', 57: '0.2',
+            58: '0.3', 59: '0.3', 60: '0.4', 61: '0.5', 62: '1', 63: '1',
+            64: '1', 65: '1', 66: '1', 67: '1', 68: '2', 69: '2',
+            70: '2', 71: '3', 72: '3', 73: '4', 74: '4', 75: '5',
+            76: '5', 77: '6', 78: '7', 79: '8', 80: '9', 81: '10',
+            82: '12', 83: '13', 84: '14', 85: '16', 86: '18', 87: '19',
+            88: '21', 89: '23', 90: '25', 91: '27', 92: '30', 93: '32',
+            94: '34', 95: '37', 96: '39', 97: '42', 98: '45', 99: '47',
+            100: '50', 101: '53', 102: '55', 103: '58', 104: '61', 105: '63',
+            106: '66', 107: '68', 108: '70', 109: '73', 110: '75', 111: '77',
+            112: '79', 113: '81', 114: '82', 115: '84', 116: '86', 117: '87',
+            118: '88', 119: '90', 120: '91', 121: '92', 122: '93', 123: '94',
+            124: '95', 125: '95', 126: '96', 127: '96', 128: '97', 129: '97',
+            130: '98', 131: '98', 132: '98', 133: '99', 134: '99', 135: '99',
+            136: '99', 137: '99', 138: '99', 139: '99.5', 140: '99.6', 141: '99.7',
+            142: '99.7', 143: '99.8', 144: '99.8', 145: '99.9', 146: '99.9', 147: '99.9',
+            148: '99.9', 149: '99.9', 150: '>99.9', 151: '>99.9', 152: '>99.9', 153: '>99.9',
+            154: '>99.9', 155: '>99.9', 156: '>99.9', 157: '>99.9', 158: '>99.9', 159: '>99.9',
+            160: '>99.9'
+        },
+        scaledPercentiles: {
+            1: '0.1', 2: '0.4', 3: '1', 4: '2', 5: '5', 6: '9', 7: '16', 8: '25', 9: '37',
+            10: '50', 11: '63', 12: '75', 13: '84', 14: '91', 15: '95', 16: '98', 17: '99',
+            18: '99.6', 19: '99.9'
+        }
+    };
+
+    function getScoringConfig() {
+        var cfg = getConfig();
+        return (cfg && cfg.scoring) || DEFAULT_SCORING;
+    }
+
+    var Scoring = {
+        getStandardPercentile: function (score) {
+            if (score === null || score === undefined || score === '' || isNaN(score)) {
+                return '';
+            }
+            var num = Math.round(Number(score));
+            if (num < 40) return '<1';
+            if (num > 160) return '<99.9';
+            var sc = getScoringConfig();
+            var map = (sc && sc.standardPercentiles) || DEFAULT_SCORING.standardPercentiles;
+            var pr = map[num] !== undefined ? String(map[num]) : '';
+            if (pr === '<0.1') return '<1';
+            if (pr === '>99.9') return '<99.9';
+            return pr;
+        },
+
+        getScaledPercentile: function (score) {
+            if (score === null || score === undefined || score === '' || isNaN(score)) {
+                return '';
+            }
+            var num = Math.round(Number(score));
+            if (num <= 2) return '<1';
+            if (num >= 19) return '>99';
+            var sc = getScoringConfig();
+            var map = (sc && sc.scaledPercentiles) || DEFAULT_SCORING.scaledPercentiles;
+            return map[num] !== undefined ? String(map[num]) : '';
+        },
+
+        getCompositeDescriptor: function (score) {
+            if (score === null || score === undefined || score === '' || isNaN(score)) {
+                return '';
+            }
+            var num = Number(score);
+            var sc = getScoringConfig();
+            var ranges = (sc && sc.standardRanges) || DEFAULT_SCORING.standardRanges;
+            for (var i = 0; i < ranges.length; i++) {
+                if (num <= ranges[i].max) {
+                    return ranges[i].label;
+                }
+            }
+            return 'Significantly Above Average';
+        },
+
+        getSubtestDescriptor: function (score) {
+            if (score === null || score === undefined || score === '' || isNaN(score)) {
+                return '';
+            }
+            var num = Number(score);
+            var sc = getScoringConfig();
+            var ranges = (sc && sc.scaledRanges) || DEFAULT_SCORING.scaledRanges;
+            for (var i = 0; i < ranges.length; i++) {
+                if (num <= ranges[i].max) {
+                    return ranges[i].label;
+                }
+            }
+            return 'Significantly Above Average';
+        },
+
+        getBellCurvePercentage: function (score) {
+            if (score === null || score === undefined || score === '' || isNaN(score)) {
+                return 0;
+            }
+            var num = Number(score);
+            var pct = ((num - 40) / 120) * 100;
+            return Math.max(0, Math.min(100, pct));
+        },
+
+        updateBellCurveItem: function (scaleId, score) {
+            if (!scaleId) return;
+            var pct = Scoring.getBellCurvePercentage(score);
+            var barSelector = '.' + scaleId + '_bar';
+            var calcWidth = 'calc(' + pct + '% - ' + (pct / 10) + 'px)';
+            if (window.jQuery) {
+                window.jQuery(barSelector).css('width', calcWidth);
+            } else {
+                var el = document.querySelector(barSelector);
+                if (el) el.style.width = calcWidth;
+            }
+        },
+
+        bindAssessmentTable: function (tableOrContainerSelector) {
+            var sel = tableOrContainerSelector || '#table-cells';
+            var container = typeof sel === 'string' ? document.querySelector(sel) : sel;
+            if (!container) return;
+
+            function handleInput(input) {
+                var val = input.value;
+                var id = input.id || input.name;
+                var row = input.closest('tr');
+                if (!row) return;
+
+                var maxAttr = input.getAttribute('max');
+                var maxVal = maxAttr ? Number(maxAttr) : null;
+                var isComposite = (maxVal !== null && maxVal > 20) || (!maxVal && Number(val) > 20);
+
+                var descriptorText = '';
+                var percentileText = '';
+
+                if (isComposite) {
+                    descriptorText = Scoring.getCompositeDescriptor(val);
+                    percentileText = Scoring.getStandardPercentile(val);
+                    Scoring.updateBellCurveItem(id, val);
+                } else {
+                    descriptorText = Scoring.getSubtestDescriptor(val);
+                    percentileText = Scoring.getScaledPercentile(val);
+                }
+
+                var descEl = row.querySelector('.descriptor');
+                if (descEl) descEl.textContent = descriptorText;
+
+                var prEl = row.querySelector('.percentile') || (id ? document.getElementById(id + '_pr') : null);
+                if (prEl) prEl.textContent = percentileText;
+
+                if (id) {
+                    var textValEl = row.querySelector('.' + id + '.text-values');
+                    if (textValEl) textValEl.textContent = val;
+                }
+            }
+
+            container.addEventListener('input', function (e) {
+                if (e.target && e.target.matches('input[type="number"], input.score-input')) {
+                    handleInput(e.target);
+                }
+            });
+
+            container.addEventListener('change', function (e) {
+                if (e.target && e.target.matches('input[type="number"], input.score-input')) {
+                    handleInput(e.target);
+                }
+            });
+
+            var inputs = container.querySelectorAll('input[type="number"], input.score-input');
+            inputs.forEach(function (inp) {
+                if (inp.value !== '') {
+                    handleInput(inp);
+                }
+            });
+        }
+    };
+
+    ClicReportAPI.scoring = Scoring;
+    ClicReportAPI.getStandardPercentile = Scoring.getStandardPercentile;
+    ClicReportAPI.getScaledPercentile = Scoring.getScaledPercentile;
+    ClicReportAPI.getCompositeDescriptor = Scoring.getCompositeDescriptor;
+    ClicReportAPI.getSubtestDescriptor = Scoring.getSubtestDescriptor;
+    ClicReportAPI.getBellCurvePercentage = Scoring.getBellCurvePercentage;
+    ClicReportAPI.updateBellCurveItem = Scoring.updateBellCurveItem;
+    ClicReportAPI.bindAssessmentTable = Scoring.bindAssessmentTable;
+
     window.ClicReportAPI = ClicReportAPI;
 
     // Auto-bind shortcode shells rendered by [clicreport_template] & [clicreport_sandbox]
