@@ -1,469 +1,1219 @@
-/* ==========================================================================
-   ClickReport – Global report skin  (v1.1.0, "Concept A – Clinical Clarity")
-   --------------------------------------------------------------------------
-   PURPOSE
-   One shared visual layer for every ClickReport report template (BASC-3,
-   and the templates that follow). It restyles the page ONLY. It never
-   changes markup, IDs, class names or JavaScript behaviour.
+		@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+		@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0&icon_names=table,bar_chart,article,table_chart,insert_chart');
 
-   HOW TO USE IN A TEMPLATE (2 edits, nothing else)
-   1. After the template's own <style> block add:
-        <link rel='stylesheet' href='/css/clickreport-global.css?v=1.1.0'>
-   2. Add the class  cr-report  to the template's section tag:
-        <section id='content' class='full-width cr-report'>
+	/* ==========================================================================
+	A. BASE LAYER (functional rules; do not restyle here, restyle in section B)
+	========================================================================== */
+			@font-face {
+				font-family: 'mvboli';
+				src: url(/css/fonts/mvboli.ttf) format('truetype');
+			}
 
-   OPTIONAL SWITCH
-   cr-classic-reports  Opt OUT of the Concept A table look. The score table,
-                       chart and narrative keep their original appearance, so
-                       what users paste into Word / copy as a picture is
-                       unchanged from before the redesign.
-                       By default (without this class) the tables get the
-                       Concept A look, which also changes the pasted output.
+			body {
+				font-family: Arial, Helvetica, sans-serif;
+				font-size: .9em;
+				color: #000000;
+				background-color: #FFFFFF;
+				margin: 0;
+				padding: 10px 20px 20px 20px;
+			}
 
-   TWO LAYERS
-   1. CHROME   – everything people interact with: settings panels, examinee
-                 form, validity dropdowns, buttons, title bars, placeholders.
-                 Always restyled.
-   2. REPORT   – #table-container, #table-container-2 (restyled by default,
-                 opt out with cr-classic-reports) and #narrative-container
-                 (never restyled: it is prose that is pasted into reports).
+			samp {
+				font-size: 1.3em;
+			}
 
-   RULES FOR EDITING THIS FILE
-   - Everything is scoped under  #content.cr-report  so nothing leaks into
-     the WordPress/Avada header, footer or other pages.
-   - Never set display on table parts, rows or cells: the JS shows/hides
-     them with .hide / .show_hide_fu*. Only rules that are safe with those
-     helpers are used here.
-   - Do not style the section itself with font/colour: the report surfaces
-     inherit those from <body> and they end up in the copied output.
-   ========================================================================== */
+			.black-mask {
+				background-color: #000 !important;
+			}
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+			a {
+				color: #000000;
+				/* background-color: #FFFFFF; */
+			}
 
-/* ---------- 1. Design tokens ------------------------------------------- */
-#content.cr-report {
-  --cr-font: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+			sup a {
+				text-decoration: none;
+			}
 
-  /* surfaces */
-  --cr-page: #f3f6fa;
-  --cr-card: #ffffff;
-  --cr-panel: #e8f3f9;          /* settings / selector panels   */
-  --cr-panel-border: #bfdceb;
-  --cr-line: #d6dde6;           /* card borders                 */
-  --cr-line-soft: #e3e9f0;      /* dividers inside cards        */
+			hr {
+				margin-left: 90px;
+				height: 1px;
+				color: #000000;
+				background-color: #000000;
+				border: none;
+			}
 
-  /* text */
-  --cr-ink: #16273b;
-  --cr-ink-soft: #4f5f73;       /* 6.2:1 on white               */
-  --cr-ink-on-dark: #ffffff;
+			#logo {
+				margin-bottom: 10px;
+				margin-left: 28px;
+			}
 
-  /* brand */
-  --cr-navy: #16273b;           /* title bars, table header     */
-  --cr-accent: #0f6c8c;         /* primary action, selected     */
-  --cr-accent-hover: #0b556f;
-  --cr-accent-soft: #9ed8ee;    /* "ClickReport's" on navy      */
-  --cr-focus: #8ec9dd;
+			.text {
+				width: 80%;
+				margin-left: 90px;
+				line-height: 140%;
+			}
 
-  /* form controls */
-  --cr-field-border: #c3ccd8;
-  --cr-field-bg: #ffffff;
-  --cr-label-gold: #8a5a00;     /* 5.6:1 – replaces the old #c08703 */
+			h3 {
+				font-weight: bold;
+				font-style: underline;
+				margin: 0;
+			}
 
-  /* feedback */
-  --cr-ok-bg: #e3f4ea;  --cr-ok-ink: #1d6b3f;
+			h4 {
+				font-weight: normal;
+				margin: 0;
+			}
 
-  /* shape */
-  --cr-radius-lg: 14px;
-  --cr-radius-md: 10px;
-  --cr-radius-sm: 8px;
-  --cr-control-h: 44px;         /* minimum touch/click target   */
+			.left {
+				width: 50%;
+				display: inline-block;
+			}
+
+			.right {
+				width: 49%;
+				float: right;
+				display: inline-block;
+			}
+
+			.mvboli {
+				font-family: 'mvboli';
+			}
+
+			.text-white {
+				color: #fff;
+			}
+
+			.text-center {
+				text-align: center !important;
+			}
+
+			.text-left {
+				text-align: left !important;
+			}
+
+			.text-right {
+				text-align: right !important;
+			}
+
+			.bold {
+				font-weight: bold;
+			}
+
+			.grey,
+			.grey td {
+				background: #cfcfcf;
+			}
+
+			.grey td:first-child {
+				font-weight: bold;
+			}
+
+			table tr td:nth-child(2),
+			table tr td:nth-child(3),
+			table tr td:nth-child(4) {
+				text-align: center;
+				width: 200px;
+			}
+
+			td.indent {
+				padding-left: 10px;
+			}
+
+			table {
+				border-collapse: collapse;
+				width: 100%;
+			}
+
+			thead {
+				font-weight: bold;
+				text-align: center;
+			}
+
+			thead td {
+				padding: 0 5px;
+			}
+
+			td {
+				padding: 0;
+				margin: 0;
+				background: transparent;
+			}
+
+			td:first-child {
+				width: 155px;
+			}
+
+			td:last-child {
+				width: 195px;
+			}
+
+
+			.table-container td,
+			.table-header {
+				border: 1px solid #686868;
+			}
+
+			.table-header {
+				border-top: 3px solid #000000;
+			}
+
+			td input {
+				border: none;
+				text-align: center;
+				background-color: #ffffdb;
+				line-height: 100%;
+				margin: 0;
+				width: 100%;
+				box-sizing: border-box;
+			}
+
+			td input[type='checkbox'] {
+				width: 40px
+			}
+
+			td input {
+				height: auto !important;
+			}
+
+			td input.full {
+				min-height: 25px;
+				width: 100%;
+				background-color: transparent;
+				float: left;
+				text-align: center;
+			}
+
+			.cu_lable {
+				text-align: right;
+				/* width: 40%; */
+				float: right;
+				margin-top: 5px !important;
+				display: none;
+				margin-right: 11px;
+			}
+
+			td select {
+				background-color: #ffffdb;
+			}
+
+			table tr td span {
+				font-family: Arial, Helvetica, sans-serif;
+				/* background: transparent !important; */
+			}
+
+			table p {
+				margin: 0;
+				font-family: Arial, Helvetica, sans-serif;
+				/* background: transparent !important; */
+			}
+
+			table tr td {
+				font-family: Arial, Helvetica, sans-serif;
+				/* background: transparent !important; */
+			}
+
+			.blank {
+				background-color: #000 !important;
+			}
+
+			.generate-narrative {
+				font-size: 24px;
+				padding: 10px;
+				background: #d9ead5;
+				display: block;
+				margin: auto;
+				width: 75%;
+				max-width: 320px;
+			}
+
+			.narrative {
+				border: 6px dashed #cfcfcf;
+				padding: 0 10px;
+			}
+
+			.narrative-title {
+				background: #a5a5a5;
+			}
+
+			.narrative-title h1 {
+				padding: 10px;
+				margin: 2px;
+				font-weight: 300;
+			}
+
+			.summary-title {
+				margin-top: 40px;
+				background: #a5a5a5;
+				position: relative;
+			}
+
+			.summary-title h1 {
+				padding: 10px;
+				margin: 2px;
+				font-weight: 300;
+			}
+
+			.copy-btn img {
+				max-height: 200px;
+				height: 200px;
+			}
+
+			.action-buttons {
+				margin: 40px 0;
+			}
+
+			.examinee-table {
+				margin: 40px 0;
+			}
+
+			.copy-buttons {
+				text-align: center;
+				margin: 20px 0;
+				position: relative;
+			}
+
+			.copied-table {
+				display: none;
+				position: absolute;
+				right: 0;
+				background: #ceface;
+				color: green;
+				padding: 20px;
+				top: 35%;
+				font-weight: bold;
+				border: 2px solid green;
+			}
+
+			.p_30 {
+				padding: 2px;
+				background: #d1eff9;
+			}
+
+			#show-rows {
+				margin-bottom: 20px;
+			}
+
+			#show-rows td {
+				text-align: left;
+				border: none;
+			}
+
+			#show-rows thead td {
+				text-align: center;
+			}
+
+			#narrative-container {
+				display: none;
+			}
+
+
+			.ext-buttons {
+				text-align: center;
+				margin: 10px 0;
+			}
+
+			.faq-btn {
+				background: #ffff00;
+				font-size: 24px;
+				padding: 10px;
+				display: block;
+				margin: auto;
+				width: 75%;
+				max-width: 158px;
+				padding-right: 4px;
+				display: inline;
+			}
+
+			.instructions-btn {
+				background: #2e95fc;
+				font-size: 24px;
+				padding: 10px;
+				display: block;
+				margin: auto;
+				width: 75%;
+				max-width: 158px;
+				display: inline;
+			}
+
+			a,
+			a button {
+				text-decoration: none;
+			}
+
+			a:hover,
+			a button:hover,
+			button:hover {
+				cursor: pointer;
+			}
+
+			/* .table-container {
+				border: 3px solid #000000;
+			} */
+
+			.table-header {
+				padding: 10px;
+				text-align: center;
+			}
+
+			.first_name,
+			.capitalize {
+				display: inline-block;
+			}
+
+			.capitalize::first-letter {
+				text-transform: capitalize;
+			}
+
+			.confidence-interval {
+				display: none;
+			}
+
+			.show_hide_fu3,
+			.show_hide_fu2 {
+				text-align: center;
+			}
+
+			.confidence-interval.show {
+				display: table-cell;
+			}
+
+			.w-100 {
+				width: 100%;
+			}
+
+			.text-values {
+				display: none;
+
+			}
+
+			.orange-color {
+				color: #c08703 !important;
+				font-weight: bold !important;
+			}
+
+			.hide-bell-curve {
+				display: none;
+			}
+
+			.informant_one {
+				line-height: 50px;
+			}
+
+			.wit {
+				width: 15% !important;
+			}
+
+			.m_b {
+				margin-bottom: 10px;
+				height: 10px;
+			}
+
+			.m_0 {
+				margin-top: 0px;
+			}
+
+			.text-center {
+				text-align: center !important;
+			}
+
+			.drop_style {
+				border: 1px solid #dddbdb;
+				text-align: center;
+				line-height: 100%;
+				margin-bottom: 5px;
+				background-color: #fff;
+				width: 100%;
+				box-sizing: border-box;
+			}
+
+			.m_bt {
+				margin-bottom: 5px;
+			}
+
+			/* .p_0 {
+				margin: 0px;
+				margin-bottom: 5px;
+				padding-left: 20px;
+			} */
+
+			.text_color_t {
+				color: #e7a716;
+			}
+
+			.hide {
+				display: none !important;
+			}
+
+			.p_r {
+				padding-right: 30px;
+			}
+
+			.bg_color {
+				background-color: #000 !important;
+				min-height: 25px;
+				height: 40px;
+			}
+
+			.cap {
+				text-transform: capitalize;
+			}
+
+			/*---------------custom table----------------------*/
+			.table-container td.td_border_left,
+			.table-header {
+				border-left: 3px solid #000000;
+			}
+
+			.table-container tbody td:first-child {
+				border-left: 3px solid #000000;
+			}
+
+			.table-container td.td_border_right,
+			.table-header,
+			.table-container-2 td.td_border_right {
+				border-right: 3px solid #000000;
+			}
+
+			.light_grey td.re_left_border {
+				border-left: none;
+			}
+
+			.light_grey td.re_right_border {
+				border-right: none;
+			}
+
+			.light_grey td.re_border {
+				border: none;
+			}
+
+			td.confidence-interval {
+				width: 90px !important;
+			}
+
+			tr td.w-50 {
+				width: 50px !important;
+			}
+
+			tr td.w-170 {
+				width: 170px !important;
+			}
+
+			/* secound table style */
+
+			.table-header-2 {
+				display: none;
+			}
+
+			.table-container-2 td {
+				border: none;
+				line-height: 25px;
+			}
+
+			.table-container-2 td:first-child {
+				border-left: 3px solid #000000 !important;
+				border-right: 1px solid #000;
+			}
+
+			.table-container-2 td.top {
+				border-top: 3px solid #000;
+			}
+
+			.table-container-2 td.com-bottom {
+				border-right: 1px solid;
+			}
+
+			.table-container-2 td.bottom {
+				border-bottom: 3px solid #000;
+			}
+
+			.table-container-2 .last_row {
+				border-top: 1px solid;
+			}
+
+			.table-container-2 {
+				width: 70%;
+				margin-left: 15%;
+			}
+
+			/* .table-container-2 .table-cells-2{
+				border: 3px solid #000000;
+			} */
+
+			.w-40 {
+				width: 40% !important;
+			}
+
+			#table-container .last-row.score_td td {
+				font-size: 10px;
+			}
+
+			#table-container .score_td td:nth-child(3),
+			#table-container .score_td td:nth-child(4),
+			#table-container .score_td td:nth-child(5),
+			#table-container .score_td td:nth-child(6),
+			#table-container .score_td td:nth-child(7) {
+				width: 7% !important;
+			}
+
+			#table-container .score_td td:first-child {
+				width: 20%;
+			}
+
+			.score_td span,
+			.score_td label,
+			.score_td p,
+			.score_td td {
+				font-size: 11px !important;
+			}
+
+			.copied-table-picture {
+				display: none;
+				position: absolute;
+				right: 0;
+				background: #ceface;
+				color: green;
+				padding: 20px;
+				top: 35%;
+				font-weight: bold;
+				border: 2px solid green;
+			}
+
+			.ur {
+				height: 10px;
+				/* white-space: nowrap; */
+			}
+
+			.td-gap {
+				margin-top: 75px;
+			}
+
+			.cp_size {
+				/* width: 150%; */
+				/* white-space: nowrap; */
+				min-height: 30px;
+			}
+
+			.cp_size-a {
+				width: 150%;
+				/* white-space: nowrap; */
+				/* min-height: 30px; */
+			}
+
+			.gry_cl {
+				background-color: #cfcfcf !important;
+				;
+			}
+
+			/* .ur-a{
+				min-height: 2px !important;
+			} */
+		
+
+	/* ==========================================================================
+	B. SKIN – Concept A
+	========================================================================== */
+
+	/* ---------- 1. Design tokens ------------------------------------------- */
+	#content.cr-report {
+	--cr-font: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+
+	/* surfaces */
+	--cr-page: #f3f6fa;
+	--cr-card: #ffffff;
+	--cr-panel: #e8f3f9;          /* settings / selector panels   */
+	--cr-panel-border: #bfdceb;
+	--cr-line: #d6dde6;           /* card borders                 */
+	--cr-line-soft: #e3e9f0;      /* dividers inside cards        */
+	--cr-band: #e3ecf4;           /* section rows in tables       */
+	--cr-lock: #e8eef4;           /* calculated (locked) inputs   */
+
+	/* text */
+	--cr-ink: #16273b;
+	--cr-ink-soft: #4f5f73;       /* 6.2:1 on white               */
+	--cr-ink-on-dark: #ffffff;
+
+	/* brand */
+	--cr-navy: #16273b;           /* title bars, table header     */
+	--cr-accent: #0f6c8c;         /* primary action, selected     */
+	--cr-accent-hover: #0b556f;
+	--cr-accent-soft: #9ed8ee;    /* "ClickReport's" on navy      */
+	--cr-focus: #8ec9dd;
+
+	/* form controls */
+	--cr-field-border: #c3ccd8;
+	--cr-field-bg: #ffffff;
+	--cr-label-gold: #8a5a00;     /* 5.6:1 – replaces the old #c08703 */
+
+	/* feedback */
+	--cr-ok-bg: #e3f4ea;  --cr-ok-ink: #1d6b3f;
+	--cr-warn-bg: #fff4d6; --cr-warn-ink: #7a5200;
+	--cr-na: #1f2a37;             /* "not applicable" cells       */
+
+	/* shape */
+	--cr-radius-lg: 14px;
+	--cr-radius-md: 10px;
+	--cr-radius-sm: 8px;
+	--cr-control-h: 44px;         /* minimum touch/click target   */
+	}
+
+	/* ---------- 2. Page frame ---------------------------------------------- */
+	#content.cr-report {
+	background: var(--cr-card);
+	padding: 24px 0 56px;          /* vertical only: see note below */
+	}
+	/* Column widths stay the template's own (50% / 49% in 160 of the templates,
+	no side padding). The report tables keep exactly the width they always had,
+	so "Copy Picture" produces the same image size. */
+	#content.cr-report .left  { vertical-align: top; }
+	@media (max-width: 1100px) {
+	#content.cr-report .left,
+	#content.cr-report .right { width: 100%; float: none; display: block; padding: 0; margin-left: 0; }
+	#content.cr-report .right { margin-top: 24px; }
+	}
+
+	/* keyboard focus everywhere in the template */
+	#content.cr-report :is(input, select, button, a):focus-visible {
+	outline: 3px solid var(--cr-focus);
+	outline-offset: 1px;
+	}
+
+	/* ---------- 3. CHROME: settings panels (.p_30 and table#show-rows*) ----- */
+	#content.cr-report .p_30 {
+	background: var(--cr-panel);
+	border: 1px solid var(--cr-panel-border);
+	border-radius: var(--cr-radius-lg);
+	padding: 14px 16px;
+	box-sizing: border-box;
+	font-family: var(--cr-font);
+	color: var(--cr-ink);
+	}
+	#content.cr-report .p_30.m_bt { margin-bottom: 12px; }
+
+	/* Templates that use a bare  <table id='show-rows'>  (no .p_30 wrapper, 118 of
+	the 188) get the same card on the table itself. */
+	#content.cr-report table[id^='show-rows']:not(.p_30 table) {
+	background: var(--cr-panel);
+	border: 1px solid var(--cr-panel-border);
+	border-radius: var(--cr-radius-lg);
+	border-collapse: separate;
+	border-spacing: 8px;
+	box-sizing: border-box;
+	font-family: var(--cr-font);
+	color: var(--cr-ink);
+	}
+
+	/* the two side-by-side panels were floats; as inline-blocks the 75px gap the
+	template keeps above the table no longer needs a clearing hack */
+	#content.cr-report .left > .p_30:not(.m_bt) {
+	float: none !important;
+	display: inline-block;
+	vertical-align: top;
+	margin: 0 12px -48px 0 !important;
+	width: calc(40% - 10px) !important;
+	}
+	#content.cr-report .left > .p_30:not(.m_bt) + .p_30:not(.m_bt) {
+	margin-right: 0 !important;
+	width: calc(60% - 14px) !important;
+	}
+
+	#content.cr-report .p_30 table { border-collapse: separate; border-spacing: 8px; width: 100%; margin: -8px; width: calc(100% + 16px); }
+	#content.cr-report :is(.p_30, table[id^='show-rows']) thead td {
+	text-align: left;
+	font-weight: 700;
+	font-size: 14px;
+	padding: 0;
+	}
+	#content.cr-report :is(.p_30, table[id^='show-rows']) thead td em {
+	display: block;
+	margin-top: 3px;
+	font-size: 12px !important;
+	font-style: normal;
+	font-weight: 400;
+	line-height: 1.5;
+	color: var(--cr-ink-soft);
+	}
+	#content.cr-report :is(.p_30 tbody td, table[id^='show-rows'] tbody td) {
+	background: #fff;
+	border: 1px solid var(--cr-panel-border);
+	border-radius: var(--cr-radius-md);
+	padding: 0 14px;
+	height: var(--cr-control-h);
+	box-sizing: border-box;
+	text-align: left;
+	font-size: 14px;
+	color: var(--cr-ink);
+	white-space: nowrap;
+	}
+	#content.cr-report .p_30 tbody td.indent,
+	#content.cr-report table[id^='show-rows'] tbody td.indent { padding-left: 14px; }
+	#content.cr-report :is(.p_30, table[id^='show-rows']) input[type='checkbox'] {
+	width: 20px;
+	height: 20px !important;
+	margin: 0 10px 0 0;
+	vertical-align: middle;
+	accent-color: var(--cr-accent);
+	}
+	#content.cr-report :is(.p_30, table[id^='show-rows']) label { vertical-align: middle; }
+	#content.cr-report :is(.p_30 tbody td, table[id^='show-rows'] tbody td):has(input:checked) {
+	border: 2px solid var(--cr-accent);
+	font-weight: 600;
+	}
+
+	/* ---------- 4. CHROME: examinee + rater + validity cards ---------------- */
+	/* width is NOT set here: templates use 100% (default), 80% or 55% */
+	#content.cr-report .examinee-table {
+	margin-top: 16px;
+	margin-bottom: 16px;
+	background: var(--cr-card);
+	border: 1px solid var(--cr-line);
+	border-radius: var(--cr-radius-lg);
+	border-collapse: separate;
+	border-spacing: 16px 8px;
+	padding: 10px 6px;
+	box-sizing: border-box;
+	font-family: var(--cr-font);
+	color: var(--cr-ink);
+	}
+	#content.cr-report .examinee-table td {
+	text-align: left;
+	font-size: 14px;
+	width: auto;
+	}
+	#content.cr-report .examinee-table td:first-child { width: 190px; white-space: nowrap; }
+	#content.cr-report .examinee-table td.w-170:empty { display: none; }
+	/* gold labels outside the report tables (inside them the legend sets its own colours) */
+	#content.cr-report .orange-color:not(:is(#table-container, .table-container, #table-container-2, .table-container-2) *) { color: var(--cr-label-gold) !important; }
+	#content.cr-report .examinee-table .orange-color,
+	#content.cr-report .examinee-table td.orange-color {
+	color: var(--cr-ink) !important;
+	font-weight: 600 !important;
+	}
+	#content.cr-report .examinee-table .text_color_t {
+	color: var(--cr-accent);
+	font-weight: 700;
+	text-align: left;
+	}
+	#content.cr-report .examinee-table thead td { padding-top: 6px; }
+	#content.cr-report .examinee-table thead.informant_one { line-height: 28px; }
+	#content.cr-report .examinee-table .m_b { height: 0; }
+
+	/* ---------- 5. CHROME: inputs and selects ------------------------------ */
+	#content.cr-report .examinee-table input[type='text'],
+	#content.cr-report .examinee-table select,
+	#content.cr-report select.drop_style,
+	#content.cr-report .examinee-table select.w-100 {
+	box-sizing: border-box;
+	min-height: var(--cr-control-h);
+	border: 1px solid var(--cr-field-border);
+	border-radius: var(--cr-radius-sm);
+	background-color: var(--cr-field-bg);
+	color: var(--cr-ink);
+	font: 500 14px/1.2 var(--cr-font);
+	padding: 0 12px;
+	margin: 0;
+	text-align: left;
+	}
+	#content.cr-report .examinee-table input[type='text'] { width: 100%; }
+	#content.cr-report .examinee-table select { width: 100%; }
+
+	/* ---------- 6. CHROME: primary action + copy buttons ------------------- */
+	#content.cr-report [class*='action-buttons'] { margin-top: 24px; margin-bottom: 24px; }
+
+	#content.cr-report [class*='generate-narrative'] {
+	display: block;
+	margin: 0;
+	width: auto;
+	max-width: none;
+	min-width: 240px;
+	height: 52px;
+	padding: 0 36px;
+	border: 0;
+	border-radius: var(--cr-radius-md);
+	background: var(--cr-accent);
+	color: #fff;
+	font: 700 16px/1 var(--cr-font);
+	cursor: pointer;
+	}
+	#content.cr-report [class*='generate-narrative']:hover { background: var(--cr-accent-hover); }
+
+	/* FAQ / Instructions links (186 of the 188 templates): quiet secondary buttons */
+	#content.cr-report :is(.faq-btn, .instructions-btn) {
+	display: inline-block;
+	width: auto;
+	max-width: none;
+	margin: 0 6px;
+	padding: 10px 18px;
+	border: 1.5px solid var(--cr-accent);
+	border-radius: var(--cr-radius-md);
+	background: #fff;
+	color: var(--cr-accent);
+	font: 600 14px/1.2 var(--cr-font);
+	}
+	#content.cr-report .instructions-btn { background: var(--cr-panel); }
+	#content.cr-report :is(.faq-btn, .instructions-btn):hover { background: var(--cr-accent); color: #fff; }
+
+	#content.cr-report [class*='copy-buttons'] {
+	text-align: left;
+	margin-top: 20px;
+	margin-bottom: 20px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	}
+	/* Every copy button gets the same white tile. Buttons whose label we know
+	(the five BASC-3 ones) are drawn from CSS; any other copy button keeps its
+	own image, scaled down, so its label is never lost. */
+	#content.cr-report a[class*='copy-btn'] {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-width: 120px;
+	min-height: 92px;
+	padding: 6px 10px;
+	border: 1.5px solid #bfcbda;
+	border-radius: 12px;
+	background: #fff;
+	color: var(--cr-ink);
+	font-family: var(--cr-font);
+	text-decoration: none;
+	}
+	#content.cr-report a[class*='copy-btn']:hover { border-color: var(--cr-accent); background: #f6fbfd; }
+	#content.cr-report a[class*='copy-btn'] img {
+	float: none;
+	display: block;
+	width: auto;
+	height: auto;
+	max-height: 110px;
+	max-width: 100%;
+	padding: 0;
+	margin: 0;
+	}
+
+	/* Material Symbols - Copy action icons */
+	#content.cr-report a.copy-btn:is(
+    .copy-table,
+    .copy-graphs-table,
+    .copy-narrative,
+    .copy-picture-of-table,
+    .copy-picture-of-graph
+	) {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+	}
+
+	/* Common icon styling */
+	#content.cr-report a.copy-btn:is(
+    .copy-table,
+    .copy-graphs-table,
+    .copy-narrative,
+    .copy-picture-of-table,
+    .copy-picture-of-graph
+	)::before {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-style: normal;
+    font-size: 30px;
+    line-height: 1;
+    display: block;
+    color: var(--cr-accent);
+    font-feature-settings: 'liga';
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+	}
+
+
+	/* Individual icons */
+#content.cr-report a.copy-table::before {
+    content: 'table';
 }
 
-/* ---------- 2. Page frame ---------------------------------------------- */
-#content.cr-report {
-  background: var(--cr-page);
-  padding: 24px 0 56px;          /* vertical only: see note below */
-}
-/* Column widths are deliberately the ORIGINAL 50% / 49%, with no side
-   padding. #table-container and #table-container-2 keep exactly the width
-   they always had, so "Copy Picture" produces the same image size and the
-   chart's "Clinically Significant" never clips. The 1% left over is the gutter. */
-#content.cr-report .left  { vertical-align: top; }
-@media (max-width: 1100px) {
-  #content.cr-report .left,
-  #content.cr-report .right { width: 100%; float: none; display: block; padding: 0; }
-  #content.cr-report .right { margin-top: 24px; }
+#content.cr-report a.copy-graphs-table::before {
+    content: 'bar_chart';
 }
 
-/* keyboard focus everywhere in the template */
-#content.cr-report :is(input, select, button, a):focus-visible {
-  outline: 3px solid var(--cr-focus);
-  outline-offset: 1px;
+#content.cr-report a.copy-narrative::before {
+    content: 'article';
 }
 
-/* ---------- 3. CHROME: settings panels (.p_30) ------------------------- */
-#content.cr-report .p_30 {
-  background: var(--cr-panel);
-  border: 1px solid var(--cr-panel-border);
-  border-radius: var(--cr-radius-lg);
-  padding: 14px 16px;
-  box-sizing: border-box;
-  font-family: var(--cr-font);
-  color: var(--cr-ink);
-}
-#content.cr-report .p_30.m_bt { margin-bottom: 12px; }
-
-/* the two side-by-side panels were floats; as inline-blocks the 75px gap
-   the template keeps above the table no longer needs a clearing hack */
-#content.cr-report .left > .p_30:not(.m_bt) {
-  float: none !important;
-  display: inline-block;
-  vertical-align: top;
-  margin: 0 12px -48px 0 !important;
-  width: calc(40% - 10px) !important;
-}
-#content.cr-report .left > .p_30:not(.m_bt) + .p_30:not(.m_bt) {
-  margin-right: 0 !important;
-  width: calc(60% - 14px) !important;
+#content.cr-report a.copy-picture-of-table::before {
+    content: 'table_chart';
 }
 
-#content.cr-report .p_30 table { border-collapse: separate; border-spacing: 8px; width: 100%; margin: -8px; width: calc(100% + 16px); }
-#content.cr-report .p_30 thead td {
-  text-align: left;
-  font-weight: 700;
-  font-size: 14px;
-  padding: 0;
-}
-#content.cr-report .p_30 thead td em {
-  display: block;
-  margin-top: 3px;
-  font-size: 12px !important;
-  font-style: normal;
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--cr-ink-soft);
-}
-#content.cr-report .p_30 tbody td {
-  background: #fff;
-  border: 1px solid var(--cr-panel-border);
-  border-radius: var(--cr-radius-md);
-  padding: 0 14px;
-  height: var(--cr-control-h);
-  box-sizing: border-box;
-  text-align: left;
-  font-size: 14px;
-  white-space: nowrap;
-}
-#content.cr-report .p_30 tbody td.indent { padding-left: 14px; }
-#content.cr-report .p_30 input[type='checkbox'] {
-  width: 20px;
-  height: 20px;
-  margin: 0 10px 0 0;
-  vertical-align: middle;
-  accent-color: var(--cr-accent);
-}
-#content.cr-report .p_30 label { vertical-align: middle; }
-#content.cr-report .p_30 tbody td:has(input:checked) {
-  border: 2px solid var(--cr-accent);
-  font-weight: 600;
+#content.cr-report a.copy-picture-of-graph::before {
+    content: 'insert_chart';
 }
 
-/* ---------- 4. CHROME: examinee + rater + validity cards ---------------- */
-#content.cr-report .examinee-table {
-  width: 100%;
-  margin: 16px 0;
-  background: var(--cr-card);
-  border: 1px solid var(--cr-line);
-  border-radius: var(--cr-radius-lg);
-  border-collapse: separate;
-  border-spacing: 16px 8px;
-  padding: 10px 6px;
-  box-sizing: border-box;
-  font-family: var(--cr-font);
-  color: var(--cr-ink);
-}
-#content.cr-report .examinee-table td {
-  text-align: left;
-  font-size: 14px;
-  width: auto;
-}
-#content.cr-report .examinee-table td:first-child { width: 190px; white-space: nowrap; }
-#content.cr-report .examinee-table td.w-170:empty { display: none; }
-#content.cr-report .examinee-table .orange-color,
-#content.cr-report .examinee-table td.orange-color {
-  color: var(--cr-ink) !important;
-  font-weight: 600 !important;
-}
-#content.cr-report .examinee-table .text_color_t {
-  color: var(--cr-accent);
-  font-weight: 700;
-  text-align: left;
-}
-#content.cr-report .examinee-table thead td { padding-top: 6px; }
-#content.cr-report .examinee-table thead.informant_one { line-height: 28px; }
-#content.cr-report .examinee-table .m_b { height: 0; }
-
-/* ---------- 5. CHROME: inputs and selects ------------------------------ */
-#content.cr-report .examinee-table input[type='text'],
-#content.cr-report .examinee-table select,
-#content.cr-report select.drop_style,
-#content.cr-report .examinee-table select.w-100 {
-  box-sizing: border-box;
-  min-height: var(--cr-control-h);
-  border: 1px solid var(--cr-field-border);
-  border-radius: var(--cr-radius-sm);
-  background-color: var(--cr-field-bg);
-  color: var(--cr-ink);
-  font: 500 14px/1.2 var(--cr-font);
-  padding: 0 12px;
-  margin: 0;
-  text-align: left;
-}
-#content.cr-report .examinee-table input[type='text'] { width: 100%; }
-#content.cr-report .examinee-table select { width: 100%; }
-
-/* score inputs inside the report table: hidden by the copy buttons, so they
-   can be restyled freely. They just need to read clearly. */
-#content.cr-report #table-container input.full {
-  color: var(--cr-ink);
-  background-color: #fff;
-  border: 1px solid var(--cr-field-border);
-  border-radius: 6px;
-  min-height: 32px;
-  font: 600 14px/1.2 var(--cr-font);
+/* Button labels */
+#content.cr-report a.copy-table::after {
+    content: 'Table';
 }
 
-/* ---------- 6. CHROME: primary action + copy buttons ------------------- */
-#content.cr-report .action-buttons { margin: 24px 0; }
-
-#content.cr-report .generate-narrative {
-  display: block;
-  margin: 0;
-  width: auto;
-  max-width: none;
-  min-width: 240px;
-  height: 52px;
-  padding: 0 36px;
-  border: 0;
-  border-radius: var(--cr-radius-md);
-  background: var(--cr-accent);
-  color: #fff;
-  font: 700 16px/1 var(--cr-font);
-  cursor: pointer;
-}
-#content.cr-report .generate-narrative:hover { background: var(--cr-accent-hover); }
-
-#content.cr-report .copy-buttons {
-  text-align: left;
-  margin: 20px 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-/* icon tile built from CSS only: the <img> stays in the DOM, just not shown */
-#content.cr-report a.copy-btn {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 120px;
-  height: 92px;
-  box-sizing: border-box;
-  border: 1.5px solid #bfcbda;
-  border-radius: 12px;
-  background: #fff;
-  color: var(--cr-ink);
-  font-family: var(--cr-font);
-  text-decoration: none;
-}
-#content.cr-report a.copy-btn:hover { border-color: var(--cr-accent); background: #f6fbfd; }
-#content.cr-report a.copy-btn img { display: none; }
-#content.cr-report a.copy-btn::before {
-  content: 'COPY';
-  padding-top: 30px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230F6C8C' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='11' height='11' rx='2'/%3E%3Cpath d='M5 15V6a2 2 0 0 1 2-2h9'/%3E%3C/svg%3E") no-repeat top center;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--cr-ink-soft);
-}
-#content.cr-report a.copy-btn::after {
-  content: 'Copy';
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  line-height: 1.2;
-}
-#content.cr-report a.copy-table::after             { content: 'Table'; }
-#content.cr-report a.copy-graphs-table::after      { content: 'Chart'; }
-#content.cr-report a.copy-narrative::after         { content: 'Narrative'; }
-#content.cr-report a.copy-picture-of-table::after  { content: 'Picture of Table'; }
-#content.cr-report a.copy-picture-of-graph::after  { content: 'Picture of Chart'; }
-
-/* confirmation toasts */
-#content.cr-report .copied-table,
-#content.cr-report .copied-table-picture {
-  top: 0;
-  background: var(--cr-ok-bg);
-  color: var(--cr-ok-ink);
-  border: 1px solid var(--cr-ok-ink);
-  border-radius: var(--cr-radius-md);
-  padding: 12px 18px;
-  font: 600 14px/1.2 var(--cr-font);
+#content.cr-report a.copy-graphs-table::after {
+    content: 'Chart';
 }
 
-/* ---------- 7. CHROME: title bars + narrative placeholder -------------- */
-#content.cr-report .narrative-title {
-  background: var(--cr-navy);
-  border-radius: var(--cr-radius-lg) var(--cr-radius-lg) 0 0;
-}
-#content.cr-report .narrative-title h1 {
-  margin: 0;
-  padding: 20px 24px;
-  font: 600 22px/1.25 var(--cr-font);
-  color: var(--cr-ink-on-dark);
-  text-align: left !important;
-}
-#content.cr-report .narrative-title .mvboli {
-  font-family: var(--cr-font);
-  font-weight: 800;
-  color: var(--cr-accent-soft);
-}
-#content.cr-report .narrative {
-  background: var(--cr-card);
-  border: 1px solid var(--cr-line);
-  border-top: 0;
-  border-radius: 0 0 var(--cr-radius-lg) var(--cr-radius-lg);
-  padding: 20px;
-}
-#content.cr-report .narrative-instructions-container {
-  border: 2px dashed #b5c2d1;
-  border-radius: var(--cr-radius-md);
-  background: #fafbfd;
-  padding: 24px 20px;
-  font-family: var(--cr-font);
-  color: var(--cr-ink-soft);
-}
-#content.cr-report .narrative-instructions-container p { margin: 0; font-size: 14px; }
-
-/* the report surfaces sit on a white card; give them an explicit white so
-   the copied output still carries white, not the page tint */
-#content.cr-report #table-container,
-#content.cr-report #table-container-2,
-#content.cr-report #narrative-container { background-color: #fff; }
-
-/* ==========================================================================
-   REPORT SURFACES – Concept A tables (default; opt out with cr-classic-reports)
-   These are the areas the copy buttons read, so this is also what appears in
-   Word and in "Copy Picture". Every colour is set explicitly so text can never
-   end up the same colour as its background because of the WordPress theme.
-   ========================================================================== */
-#content.cr-report:not(.cr-classic-reports) :is(#table-container, #table-container-2) {
-  border: 1px solid var(--cr-line);
-  border-radius: var(--cr-radius-lg);
-  overflow: hidden;
-  font-family: var(--cr-font);
-  color: var(--cr-ink);
+#content.cr-report a.copy-narrative::after {
+    content: 'Narrative';
 }
 
-/* title block: the theme's heading styles made the <h4> white-on-white */
-#content.cr-report:not(.cr-classic-reports) #table-container .table-header {
-  border: 0;
-  border-bottom: 1px solid var(--cr-line);
-  background: #f8f9fd;
-  padding: 14px 20px;
-  text-align: center;
-}
-#content.cr-report:not(.cr-classic-reports) #table-container .table-header h3 {
-  margin: 0;
-  font: 700 22px/1.25 var(--cr-font);
-  color: var(--cr-ink) !important;
-}
-#content.cr-report:not(.cr-classic-reports) #table-container .table-header h4 {
-  margin: 4px 0 0;
-  font: 400 13px/1.4 var(--cr-font);
-  color: var(--cr-ink-soft) !important;
+#content.cr-report a.copy-picture-of-table::after {
+    content: 'Picture of Table';
 }
 
-/* grid + cell text */
-#content.cr-report:not(.cr-classic-reports) :is(#table-container, #table-container-2) td {
-  border: 1px solid var(--cr-line-soft) !important;
-  padding: 2px 8px;
-  font: 400 12.5px/1.3 var(--cr-font);
-  color: var(--cr-ink);
-}
-#content.cr-report:not(.cr-classic-reports) :is(#table-container, #table-container-2) td p {
-  margin: 0;
-  color: inherit;
-}
-#content.cr-report:not(.cr-classic-reports) :is(#table-container, #table-container-2) td:first-child {
-  font-weight: 600;
+#content.cr-report a.copy-picture-of-graph::after {
+    content: 'Picture of Chart';
 }
 
-/* header rows */
-#content.cr-report:not(.cr-classic-reports) #table-cells thead .grey td {
-  background: var(--cr-navy);
-  color: var(--cr-ink-on-dark);
-  font-weight: 600;
-  text-align: center;
-}
-#content.cr-report:not(.cr-classic-reports) #table-cells-2 thead .grey td {
-  background: #e3ecf4;
-  color: var(--cr-ink);
-  font-weight: 700;
-  text-align: center;
-}
-#content.cr-report:not(.cr-classic-reports) :is(#table-cells, #table-cells-2) thead .grey td:first-child { text-align: left; }
-
-/* section rows (Externalizing Problems, Adaptive Skills …) */
-#content.cr-report:not(.cr-classic-reports) :is(#table-cells, #table-cells-2) tbody .grey td {
-  background: #e3ecf4;
-  color: var(--cr-ink);
-}
-#content.cr-report:not(.cr-classic-reports) :is(#table-cells, #table-cells-2) tbody .grey td:first-child {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+/* Label styling */
+#content.cr-report a.copy-btn:is(
+    .copy-table,
+    .copy-graphs-table,
+    .copy-narrative,
+    .copy-picture-of-table,
+    .copy-picture-of-graph
+)::after {
+    font-family: var(--cr-font);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--cr-ink);
+    text-align: center;
 }
 
-/* scale name + definition columns */
-#content.cr-report:not(.cr-classic-reports) #table-cells tbody tr:not(.grey) td:first-child { padding: 4px 10px; }
-#content.cr-report:not(.cr-classic-reports) #table-cells tbody tr:not(.grey) td:nth-child(2) {
-  padding: 4px 10px;
-  text-align: left;
-  font-size: 12px;
-  line-height: 1.3;
-  color: var(--cr-ink-soft);
-}
-/* calculated composite scores read as "locked" values, like the mockup */
-#content.cr-report:not(.cr-classic-reports) #table-container tbody .grey input.full {
-  background-color: #e8eef4;
-  color: var(--cr-ink-soft);
-}
 
-/* N/A (blacked-out) cells: softened from pure black, still unmistakable */
-#content.cr-report:not(.cr-classic-reports) :is(#table-container, #table-container-2) td.black-mask {
-  background-color: #1f2a37 !important;
-  color: #1f2a37;
-}
+	/* known labels: icon tile built from CSS only (<img> stays in the DOM, hidden) */
+	/* #content.cr-report a.copy-btn:is(.copy-table, .copy-graphs-table, .copy-narrative, .copy-picture-of-table, .copy-picture-of-graph) {
+	flex-direction: column;
+	gap: 2px;
+	width: 120px;
+	height: 92px;
+	padding: 0;
+	} */
+	#content.cr-report a.copy-btn:is(.copy-table, .copy-graphs-table, .copy-narrative, .copy-picture-of-table, .copy-picture-of-graph) img { display: none; }
+	/* #content.cr-report a.copy-btn:is(.copy-table, .copy-graphs-table, .copy-narrative, .copy-picture-of-table, .copy-picture-of-graph)::before {
+	content: 'COPY';
+	padding-top: 30px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230F6C8C' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='11' height='11' rx='2'/%3E%3Cpath d='M5 15V6a2 2 0 0 1 2-2h9'/%3E%3C/svg%3E") no-repeat top center;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--cr-ink-soft);
+	} */
+	/* #content.cr-report a.copy-btn:is(.copy-table, .copy-graphs-table, .copy-narrative, .copy-picture-of-table, .copy-picture-of-graph)::after {
+	content: 'Copy';
+	font-size: 13px;
+	font-weight: 600;
+	text-align: center;
+	line-height: 1.2;
+	} */
+	#content.cr-report a.copy-table::after             { content: 'Table'; }
+	#content.cr-report a.copy-graphs-table::after      { content: 'Chart'; }
+	#content.cr-report a.copy-narrative::after         { content: 'Narrative'; }
+	#content.cr-report a.copy-picture-of-table::after  { content: 'Picture of Table'; }
+	#content.cr-report a.copy-picture-of-graph::after  { content: 'Picture of Chart'; }
 
-/* chart results as chips (cells keep the amber / red fill set by the scoring script) */
-#content.cr-report:not(.cr-classic-reports) #table-container-2 td:not(.black-mask) label {
-  display: inline-block;
-  padding: 0 6px;
-  border: 1px solid rgba(22, 39, 59, 0.16);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  font: 600 11px/1.35 var(--cr-font);
-  white-space: nowrap;
-  color: var(--cr-ink);
-}
-#content.cr-report:not(.cr-classic-reports) #table-container-2 td:not(:first-child) { padding-left: 3px; padding-right: 3px; }
-#content.cr-report:not(.cr-classic-reports) #table-container-2 td.black-mask label { color: #1f2a37; }
+	/* confirmation toasts (position / top / right stay the template's own) */
+	#content.cr-report :is([class*='copied-table'], [class*='copied-bell-curve'], [class*='copyied-graph']) {
+	background: var(--cr-ok-bg);
+	color: var(--cr-ok-ink);
+	border: 1px solid var(--cr-ok-ink);
+	border-radius: var(--cr-radius-md);
+	padding: 12px 18px;
+	font: 600 14px/1.2 var(--cr-font);
+	}
+	#content.cr-report [class*='copying-bell-curve'] {
+	background: var(--cr-warn-bg);
+	color: var(--cr-warn-ink);
+	border: 1px solid var(--cr-warn-ink);
+	border-radius: var(--cr-radius-md);
+	padding: 12px 18px;
+	font: 600 14px/1.2 var(--cr-font);
+	}
 
-/* legend row under the score table: same colours the scoring script applies */
-#content.cr-report:not(.cr-classic-reports) #table-container .last-row td { color: var(--cr-ink) !important; }
-#content.cr-report:not(.cr-classic-reports) #table-container .last-row td:nth-child(1) { background: #ffe699; font-weight: 600; text-align: center; }
-#content.cr-report:not(.cr-classic-reports) #table-container .last-row td:nth-child(2) { background: #e06c6c; font-weight: 600; }
+	/* ---------- 7. CHROME: title bars + narrative placeholder -------------- */
+	#content.cr-report :is(.narrative-title, .summary-title) {
+	background: var(--cr-navy);
+	border-radius: var(--cr-radius-lg) var(--cr-radius-lg) 0 0;
+	}
+	#content.cr-report :is(.narrative-title, .summary-title) h1 {
+	margin: 0;
+	padding: 20px 24px;
+	font: 600 22px/1.25 var(--cr-font);
+	color: var(--cr-ink-on-dark);
+	text-align: left !important;
+	}
+	#content.cr-report :is(.narrative-title, .summary-title) .mvboli {
+	font-family: var(--cr-font);
+	font-weight: 800;
+	color: var(--cr-accent-soft);
+	}
+	/* the box under a title bar: white card (flat top); a box on its own keeps its
+	top corners. margin / width / height stay the template's own. */
+	#content.cr-report :is(.narrative, .narrative-summary-container, .performance-summary-container) {
+	background: var(--cr-card);
+	border: 1px solid var(--cr-line);
+	border-radius: var(--cr-radius-lg);
+	padding: 20px 14px;            /* 14px: 2 templates give .narrative a fixed 535px width */
+	}
+	#content.cr-report :is(.narrative-title, .summary-title) + :is(.narrative, .narrative-summary-container, .performance-summary-container) {
+	border-top: 0;
+	border-radius: 0 0 var(--cr-radius-lg) var(--cr-radius-lg);
+	}
+	#content.cr-report :is(.narrative-instructions-container, .narrative-summary-instructions-container, .performance-summary-instructions-container) {
+	border: 2px dashed #b5c2d1;
+	border-radius: var(--cr-radius-md);
+	background: #fafbfd;
+	padding: 24px 20px;
+	font-family: var(--cr-font);
+	color: var(--cr-ink-soft);
+	}
+	#content.cr-report :is(.narrative-instructions-container, .narrative-summary-instructions-container, .performance-summary-instructions-container) p { margin: 0; font-size: 14px; }
+
+	/* the report surfaces sit on a white card; give them an explicit white so
+	the copied output still carries white, not the page tint */
+	#content.cr-report :is(#table-container, .table-container, #table-container-2, .table-container-2),
+	#content.cr-report :is([id^='narrative-container'], .narrative-container) { background-color: #fff; }
+
+	/* ==========================================================================
+	REPORT SURFACES – Concept A tables (default; opt out with cr-classic-reports)
+	These are the areas the copy buttons read, so this is also what appears in
+	Word and in "Copy Picture". Every colour is set explicitly so text can never
+	end up the same colour as its background because of the WordPress theme.
+	Templates address the boxes either by ID (#table-container) or by class
+	(.table-container); both are covered.
+	========================================================================== */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) {
+	border: 1px solid var(--cr-line);
+	border-radius: var(--cr-radius-lg);
+	box-sizing: border-box;        /* a fixed template width (e.g. 655px) stays that wide */
+	overflow: hidden;
+	font-family: var(--cr-font);
+	color: var(--cr-ink);
+	}
+
+	/* title block: the theme's heading styles made the <h4> white-on-white */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) .table-header {
+	border: 0;
+	border-bottom: 1px solid var(--cr-line);
+	background: #f8f9fd;
+	padding: 14px 20px;
+	text-align: center;
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) .table-header h3 {
+	margin: 0;
+	font: 700 22px/1.25 var(--cr-font);
+	color: var(--cr-ink) !important;
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) .table-header h4 {
+	margin: 4px 0 0;
+	font: 400 13px/1.4 var(--cr-font);
+	color: var(--cr-ink-soft) !important;
+	}
+
+	/* grid + cell text */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) td {
+	border: 1px solid var(--cr-line-soft) !important;
+	padding: 2px 8px;
+	font: 400 12.5px/1.3 var(--cr-font);
+	color: var(--cr-ink);
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) td p {
+	margin: 0;
+	color: inherit;
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) td:first-child {
+	font-weight: 600;
+	}
+
+	/* score inputs / selects inside the report tables: one clear boxed style
+	(the copy buttons turn them into text, so they can be restyled freely) */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2)
+	:is(input:not([type='checkbox']):not([type='radio']):not([type='hidden']), select) {
+	color: var(--cr-ink);
+	background-color: #fff;
+	border: 1px solid var(--cr-field-border);
+	border-radius: 6px;
+	min-height: 32px;
+	font: 600 14px/1.2 var(--cr-font);
+	}
+
+	/* header rows: navy on the score table, pale on the chart. Most templates
+	force  .grey { background:#cfcfcf !important }  and  thead td { background:#000 !important },
+	so these carry !important with ID-based selectors. */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) thead :is(tr, td, tr.grey td) {
+	background: var(--cr-navy) !important;
+	color: var(--cr-ink-on-dark);
+	font-weight: 600;
+	text-align: center;
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container-2, .table-container-2) thead :is(tr, td, tr.grey td) {
+	background: var(--cr-band) !important;
+	color: var(--cr-ink);
+	font-weight: 700;
+	text-align: center;
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) thead td:first-child { text-align: left; }
+
+	/* section rows (Externalizing Problems, Adaptive Skills ...) */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) tbody :is(tr.grey, tr.grey td, td.grey) {
+	background: var(--cr-band) !important;
+	color: var(--cr-ink);
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) tbody .grey td:first-child {
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	}
+	/* calculated composite scores read as "locked" values */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) tbody .grey input {
+	background: var(--cr-lock) !important;
+	color: var(--cr-ink-soft);
+	}
+
+	/* scale name + definition columns */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) tbody tr:not(.grey) td:first-child { padding: 4px 10px; }
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) tbody tr:not(.grey) td:nth-child(2) {
+	padding: 4px 10px;
+	text-align: left;
+	font-size: 12px;
+	line-height: 1.3;
+	color: var(--cr-ink-soft);
+	}
+
+	/* N/A (blacked-out) cells: softened from pure black, still unmistakable.
+	Templates call them .black-mask, .black, .blank or .bg_color. */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2)
+	:is(td.black-mask, .black, .black td, .black input, td.blank, td.bg_color) {
+	background: var(--cr-na) !important;
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container, #table-container-2, .table-container-2) td.black-mask {
+	color: var(--cr-na);
+	}
+
+	/* chart results as chips (cells keep the amber / red fill set by the scoring script) */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container-2, .table-container-2) td:not(.black-mask):not(.black) label {
+	display: inline-block;
+	padding: 0 6px;
+	border: 1px solid rgba(22, 39, 59, 0.16);
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.7);
+	font: 600 11px/1.35 var(--cr-font);
+	white-space: nowrap;
+	color: var(--cr-ink);
+	}
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container-2, .table-container-2) td:not(:first-child) { padding-left: 3px; padding-right: 3px; }
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container-2, .table-container-2) td.black-mask label { color: var(--cr-na); }
+
+	/* legend row under the score table: same colours the scoring script applies */
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) .last-row td { color: var(--cr-ink) !important; }
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) .last-row td:nth-child(1) { background: #ffe699 !important; font-weight: 600; text-align: center; }
+	#content.cr-report:not(.cr-classic-reports) :is(#table-container, .table-container) .last-row td:nth-child(2) { background: #e06c6c !important; font-weight: 600; }
