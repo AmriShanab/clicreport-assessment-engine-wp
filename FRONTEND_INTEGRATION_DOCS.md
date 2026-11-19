@@ -377,7 +377,58 @@ $(document).on('click', '#copy-bell-curve', function () {
 
 ---
 
-## 8. Example JavaScript Function for Frontend Files
+## 8. Template-to-Method Lookup Directory (Which Method for Which Template)
+
+When updating a specific assessment template file (e.g., `report-wisc-v.php`, `report-conners-3.php`, or `report-vineland3-domain-only.php`), use this directory to instantly determine which `CraeClient` methods to call.
+
+### 8.1 Quick Rule of Thumb
+
+| Category | Score Scale | Percentile Method | Descriptor Method | Bell Curve Method | Example Batteries |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Cognitive / Academic Composites** | Standard (40–160, M=100, SD=15) | `CraeClient.getStandardPercentile(score)` | `CraeClient.getCompositeDescriptor(score)` | `CraeClient.updateBellCurveItem(id, score)` | WISC-V, WAIS-IV, WIAT-4, WJ-IV, KTEA-3, CELF-5, CAS-2, D-KEFS, CTOPP-2, FAR, FAM, TONI-4, UNIT-2 |
+| **Cognitive / Academic Subtests** | Scaled (1–19, M=10, SD=3) | `CraeClient.getScaledPercentile(score)` | `CraeClient.getSubtestDescriptor(score)` | N/A | Subtest rows across all cognitive/academic batteries |
+| **Behavioral / Emotional / ADHD** | T-Score (1–99, M=50, SD=10) | `CraeClient.getTScorePercentile(score)` | `CraeClient.getBehavioralDescriptor(score)` | N/A | BASC-3, Conners-3, Conners-4, CDI-2, MASC-2, BRIEF-2, EDDT, ASRS, MMPI-2 |
+| **Adaptive Behavior (Vineland Domains)** | Standard (20–160, M=100, SD=15) | `CraeClient.getStandardPercentile(score)` | `CraeClient.getVinelandDescriptor(score, false)` | N/A | Vineland-3 Domain composites |
+| **Adaptive Behavior (Vineland Subdomains)** | V-Scale (1–24, M=15, SD=3) | N/A | `CraeClient.getVinelandDescriptor(score, true)` | N/A | Vineland-3 Subdomains (Receptive, Expressive, etc.) |
+| **Dual-Scale Batteries (BOT-2, DAS-II, RIAS-2, WIAT-3)** | Mixed (Standard + T-Scores + Scaled) | Standard: `getStandardPercentile`<br>Subtests: `getTScorePercentile` | Composite: `getCompositeDescriptor`<br>Scaled: `getSubtestDescriptor` | `updateBellCurveItem` on Standard Composites | BOT-2, DAS-II, RIAS-2, WIAT-3 |
+| **Clinical Cutoffs / Screeners** | Raw Cutoff (Pass/Fail/Elevated) | N/A (Evaluated on Submit) | Evaluated on Submit via `CraeClient.generateReport()` | N/A | SCQ (&ge;15), ADI-R, ADOS-2, Vanderbilt-2, CARS-2 |
+| **Static Reference Charts** | Static Info Tables | N/A (Read-only tables) | N/A (Read-only tables) | N/A | Score descriptor reference pages |
+
+---
+
+### 8.2 Comprehensive Template-by-Template Mapping
+
+| Template File Pattern / Battery | Archetype / Category | Score Type(s) Used | Recommended JavaScript Methods |
+| :--- | :--- | :--- | :--- |
+| `report-wisc-*.php` (WISC-V, WISC-IV) | Standard Cognitive | Composites: 40–160<br>Subtests: 1–19 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()`<br>Subtests: `getScaledPercentile()`, `getSubtestDescriptor()` |
+| `report-wais-*.php` (WAIS-IV) | Standard Cognitive | Composites: 40–160<br>Subtests: 1–19 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()`<br>Subtests: `getScaledPercentile()`, `getSubtestDescriptor()` |
+| `report-wiat-4*.php` (WIAT-4) | Standard Academic | Composites: 40–160 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()` |
+| `report-wj-*.php` (WJ-IV Cog, Ach, Oral) | Standard Cognitive/Ach | Composites: 40–160 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()` |
+| `report-ktea-*.php` (KTEA-3) | Standard Academic | Composites: 40–160<br>Subtests: 1–19 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()`<br>Subtests: `getScaledPercentile()`, `getSubtestDescriptor()` |
+| `report-celf-*.php` (CELF-5) | Standard Language | Composites: 40–160<br>Subtests: 1–19 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()`<br>Subtests: `getScaledPercentile()`, `getSubtestDescriptor()` |
+| `report-cas-*.php` (CAS-2) | Standard Cognitive | Composites: 40–160<br>Subtests: 1–19 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()`<br>Subtests: `getScaledPercentile()`, `getSubtestDescriptor()` |
+| `report-ctopp-*.php` (CTOPP-2) | Standard Phonological | Composites: 40–160<br>Subtests: 1–19 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()`<br>Subtests: `getScaledPercentile()`, `getSubtestDescriptor()` |
+| `report-dkefs-*.php` (D-KEFS) | Standard Executive | Subtests: 1–19 | Subtests: `getScaledPercentile()`, `getSubtestDescriptor()` |
+| `report-far-*.php` / `report-fam-*.php` | Standard Reading/Math | Composites: 40–160 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()` |
+| `report-toni-*.php` / `report-unit-*.php` | Nonverbal Cognitive | Composites: 40–160 | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`, `updateBellCurveItem()` |
+| `report-basc-*.php` (BASC-3) | Behavioral / Emotional | T-Scores (1–99) | `getTScorePercentile()`, `getBehavioralDescriptor()` (or multi-rater API) |
+| `report-conners-3*.php` / `report-conners-4*.php` | Behavioral / ADHD | T-Scores (1–99) | `getTScorePercentile()`, `getBehavioralDescriptor()` |
+| `report-brief-*.php` (BRIEF-2) | Executive Function | T-Scores (1–99) | `getTScorePercentile()`, `getBehavioralDescriptor()` |
+| `report-cdi-*.php` (CDI-2 Depression) | Emotional / Depressive | T-Scores (1–99) | `getTScorePercentile()`, `getBehavioralDescriptor()` |
+| `report-masc-*.php` (MASC-2 Anxiety) | Emotional / Anxiety | T-Scores (1–99) | `getTScorePercentile()`, `getBehavioralDescriptor()` |
+| `report-eddt*.php` (EDDT) | Emotional Disturbance | T-Scores (1–99) | `getTScorePercentile()`, `getBehavioralDescriptor()` |
+| `report-vineland3-*.php` | Adaptive Behavior | Domains: 20–160<br>Subdomains: 1–24 | Domains: `getStandardPercentile()`, `getVinelandDescriptor(val, false)`<br>Subdomains: `getVinelandDescriptor(val, true)` |
+| `report-bot-2*.php` (BOT-2 Motor) | Dual-Scale Motor | Composites: Standard<br>Subtests: T-Scores | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`<br>Subtests: `getTScorePercentile()` |
+| `report-das-ii*.php` (DAS-II) | Dual-Scale Cognitive | Composites: Standard<br>Subtests: T-Scores | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`<br>Subtests: `getTScorePercentile()` |
+| `report-rias-2*.php` (RIAS-2) | Dual-Scale Cognitive | Composites: Standard<br>Subtests: T-Scores | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`<br>Subtests: `getTScorePercentile()` |
+| `report-wiat-3*.php` (WIAT-3 Legacy) | Dual-Scale Academic | Composites: Standard<br>Subtests: T-Scores | Composites: `getStandardPercentile()`, `getCompositeDescriptor()`<br>Subtests: `getTScorePercentile()` |
+| `report-scq*.php` | Diagnostic Cutoff | Total Score vs Cutoff 15 | No live percentiles. Call `generateReport()` on submit. |
+| `report-vanderbilt-*.php` | Diagnostic Cutoff | Count of Symptoms &ge; 2/3 | No live percentiles. Call `generateReport()` on submit. |
+| `report-ados-2*.php` / `report-adi-r*.php` | Autism Diagnostic Cutoff | Algorithm Total vs Cutoff | No live percentiles. Call `generateReport()` on submit. |
+
+---
+
+## 9. Example JavaScript Function for Frontend Files
 
 Here is the clean, drop-in snippet for your template's button click event:
 
@@ -538,7 +589,7 @@ try {
 
 ---
 
-## 9. API Request Methods
+## 10. API Request Methods
 
 You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress REST API:
 
@@ -565,7 +616,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 10. Payload Structures
+## 11. Payload Structures
 
 ### A. Multi-Rater Assessments (e.g., BASC-3, BRIEF-2)
 
@@ -611,7 +662,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 11. Required & Optional Parameters
+## 12. Required & Optional Parameters
 
 ### Common Parameters
 
@@ -638,7 +689,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 12. API Response Format
+## 13. API Response Format
 
 ```json
 {
@@ -678,7 +729,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 13. Error Handling & HTTP Statuses
+## 14. Error Handling & HTTP Statuses
 
 |         Status Code         | Reason                                                                                                                                         | What Frontend Should Do                                               |
 | :-------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
@@ -695,7 +746,7 @@ You can invoke the engine via either WordPress `admin-ajax.php` or the WordPress
 
 ---
 
-## 14. Incomplete Score Validation (`N/A` Check & `allow_partial`)
+## 15. Incomplete Score Validation (`N/A` Check & `allow_partial`)
 
 To maintain the highest clinical standards and prevent accidental generation of incomplete reports, the backend engine validates generated narratives against unassessed or missing score placeholders (`N/A`).
 
@@ -720,7 +771,7 @@ To maintain the highest clinical standards and prevent accidental generation of 
 
 ---
 
-## 15. Plugin Deployment Steps on Live Site
+## 16. Plugin Deployment Steps on Live Site
 
 Follow these steps to deploy and activate the plugin on the live WordPress environment:
 
@@ -808,7 +859,7 @@ if (function_exists('crae')) {
 
 ---
 
-## 16. Key Takeaways for Frontend Developers
+## 17. Key Takeaways for Frontend Developers
 
 1. **Do not format narrative text in JavaScript**: The backend outputs valid, sanitized, grammatically matched HTML in `narrative_html`. Simply inject this into `#narrative-container`.
 2. **Use Centralized Scoring Methods**: Never hardcode 121-line percentile arrays or descriptor lookup `if/else` ladders in template files. Call `CraeClient` (or `ClicReportAPI`):
