@@ -6,8 +6,8 @@
  * Version:           1.0.5
  * Requires at least: 6.2
  * Requires PHP:      8.0
- * Author:            ClicReport Clinical Engineering Team
- * Author URI:        https://clicreport.com
+ * Author:            Imara Software Solutions
+ * Author URI:        https://imarasoft.net
  * Text Domain:       clicreport-assessment-engine
  * Domain Path:       /resources/languages
  *
