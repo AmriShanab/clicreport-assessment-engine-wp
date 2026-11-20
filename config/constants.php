@@ -8,7 +8,7 @@
 
 defined('ABSPATH') || exit;
 
-define( 'CRAE_VERSION', '1.0.4' );
+define( 'CRAE_VERSION', '1.0.6' );
 define( 'CRAE_DB_VERSION', '1.0.0' );
 define( 'CRAE_SLUG', 'clicreport-assessment-engine' );
 define( 'CRAE_TEXT_DOMAIN', 'clicreport-assessment-engine' );

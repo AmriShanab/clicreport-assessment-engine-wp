@@ -567,6 +567,23 @@
                         outputEl.innerHTML = result.narrative_html || '';
                         outputEl.style.display = 'block';
                     }
+                                    // Populate Narrative Summary if container exists on page
+                    var narrSummaryEl = document.getElementById('narrative-summary-container');
+                    if (narrSummaryEl && result.narrative_summary_html) {
+                        narrSummaryEl.innerHTML = result.narrative_summary_html;
+                        narrSummaryEl.style.display = 'block';
+                        var narrInstr = document.querySelector('.narrative-summary-instructions-container');
+                        if (narrInstr) narrInstr.style.display = 'none';
+                    }
+
+                    // Populate Performance Summary if container exists on page
+                    var perfSummaryEl = document.getElementById('performance-summary-container');
+                    if (perfSummaryEl && result.performance_summary_html) {
+                        perfSummaryEl.innerHTML = result.performance_summary_html;
+                        perfSummaryEl.style.display = 'block';
+                        var perfInstr = document.querySelector('.performance-summary-instructions-container');
+                        if (perfInstr) perfInstr.style.display = 'none';
+                    }
                     if (copyBtn) {
                         copyBtn.style.display = 'inline-block';
                     }
