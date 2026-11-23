@@ -532,11 +532,15 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
             }
 
             // Study skills breakdown
-            $r1_study = $scaleRanges['study_skills'][1] ?? 'Average';
+            $r1_study = $scaleRanges['study_skills'][1] ?? null;
             $r2_study = $scaleRanges['study_skills'][2] ?? 'Average';
             $adapt_study = "";
             if ( ! $isPreschool && $activeRatersCount >= 2 ) {
-                $adapt_study = " Additionally, {$inf_one} rated the area of Study Skills to be within the {$r1_study} range, and {$inf_two} rated {$r2_study} concerns for study skills.";
+                if ( null !== $r1_study && 'N/A' !== $r1_study ) {
+                    $adapt_study = " Additionally, {$inf_one} rated the area of Study Skills to be within the {$r1_study} range, and {$inf_two} rated {$r2_study} concerns for study skills.";
+                } else {
+                    $adapt_study = " Additionally, {$inf_two} rated {$r2_study} concerns for study skills.";
+                }
             }
 
             // Rater 2 subscales breakdown
@@ -688,24 +692,23 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
 
         if ( 2 === $activeRatersCount ) {
             if ( $r1 === $r2 ) {
-                return "by both {$inf_one} and {$inf_two}.";
+                return "by both {$inf_one} and {$inf_two}";
             }
-            return "by {$inf_one} but within the {$r2} range by {$inf_two}.";
+            return "by {$inf_one} but within the {$r2} range by {$inf_two}";
         }
 
         // 3+ raters
         if ( $r1 === $r2 && $r2 === $r3 ) {
             if ( in_array( $sKey, [ 'somatization', 'depression', 'anxiety', 'conduct_problems', 'withdrawal', 'atypicality', 'behavioral_symptoms' ], true ) ) {
-                return "by all evaluators on this measure.";
+                return "by all evaluators on this measure";
             }
             if ( 'attention_problems' === $sKey || 'Attention' === $sKey ) {
-                return "by all evaluators on measures of attention,";
+                return "by all evaluators on measures of attention";
             }
-            $allAvg = ( 'Average' === $r1 && 'Average' === $r2 && 'Average' === $r3 );
-            return $allAvg ? "by all evaluators," : "by all evaluators.";
+            return "by all evaluators";
         }
 
-        return "by {$inf_one}, within the {$r2} range by {$inf_two}, and within the {$r3} range by {$inf_thr}.";
+        return "by {$inf_one}, within the {$r2} range by {$inf_two}, and within the {$r3} range by {$inf_thr}";
     }
 
     private function getBasc3ConsistencySentence(
@@ -731,16 +734,16 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
         }
 
         return match ( $sKey ) {
-            'externalizing_problems' => " suggesting that {$his_her} externalizing behaviors are consistent across settings.",
-            'hyperactivity'          => " suggesting that {$his_her} hyperactive behaviors are consistent across settings.",
-            'aggression'             => " suggesting that {$his_her} aggression behaviors are consistent across settings.",
-            'internalizing_problems' => " indicating that {$possName} internalizing behaviors are consistent across settings.",
+            'externalizing_problems' => ", suggesting that {$his_her} externalizing behaviors are consistent across settings.",
+            'hyperactivity'          => ", suggesting that {$his_her} hyperactive behaviors are consistent across settings.",
+            'aggression'             => ", suggesting that {$his_her} aggressive behaviors are consistent across settings.",
+            'internalizing_problems' => ", indicating that {$possName} internalizing behaviors are consistent across settings.",
             'attention_problems',
-            'Attention'              => " indicating that these behaviors are seen across settings.",
-            'behavioral_symptoms'    => " suggesting that these behaviors are observable across different environments.",
-            'atypicality'            => " suggesting that these behaviors are observable across different settings.",
-            'withdrawal'             => " suggesting that these behaviors are observable across different settings.",
-            default                  => '',
+            'Attention'              => ", indicating that these behaviors are seen across settings.",
+            'behavioral_symptoms'    => ", suggesting that these behaviors are observed across settings.",
+            'atypicality'            => ", suggesting that these behaviors are observed across settings.",
+            'withdrawal'             => ", suggesting that these behaviors are observed across settings.",
+            default                  => '.',
         };
     }
 

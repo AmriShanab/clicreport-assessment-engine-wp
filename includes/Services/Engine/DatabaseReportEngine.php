@@ -16,6 +16,7 @@ use ClicReport\AssessmentEngine\Database\Repositories\NarrativeRuleRepository;
 use ClicReport\AssessmentEngine\Database\Repositories\ScaleRepository;
 use ClicReport\AssessmentEngine\Database\Repositories\TemplateRepository;
 use ClicReport\AssessmentEngine\Services\Narrative\NarrativeInterpolator;
+use ClicReport\AssessmentEngine\Services\Narrative\ReportGrammar;
 
 defined('ABSPATH') || exit;
 
@@ -80,6 +81,7 @@ final class DatabaseReportEngine
         $processed = $processor->process($template, $sections, $scales, $data, $this->narrativeRepo);
 
         $sanitizedHtml = NarrativeInterpolator::sanitizeClinicalHtml((string) ($processed['narrative_html'] ?? ''));
+        $sanitizedHtml = ReportGrammar::cleanNarrative($sanitizedHtml);
 
         $allowPartial = ! empty($data['allow_partial']) && ('1' === $data['allow_partial'] || 1 === $data['allow_partial'] || 'true' === $data['allow_partial'] || true === $data['allow_partial']);
         if (! $allowPartial && preg_match('/\b(N\/A|NA)\b/i', $sanitizedHtml)) {

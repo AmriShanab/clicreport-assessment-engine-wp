@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Unit Tests: Pronoun Resolution, Grammar Conjugation & Informant Engine
  *
@@ -10,35 +11,37 @@ declare(strict_types=1);
 use ClicReport\AssessmentEngine\Services\Narrative\InformantManager;
 use ClicReport\AssessmentEngine\Services\Narrative\ReportGrammar;
 
-final class ReportGrammarTest {
+final class ReportGrammarTest
+{
 
-    public function run(): void {
+    public function run(): void
+    {
         // 1. Pronoun resolution & verb conjugation
-        $she = ReportGrammar::resolvePronouns( 'she/her' );
-        CraeAssert::same( 'she', $she['subject'], 'she/her subject' );
-        CraeAssert::same( 'is', $she['to_be_present'], 'she/her to_be_present' );
-        CraeAssert::same( 'herself', $she['reflexive'], 'she/her reflexive' );
+        $she = ReportGrammar::resolvePronouns('she/her');
+        CraeAssert::same('she', $she['subject'], 'she/her subject');
+        CraeAssert::same('is', $she['to_be_present'], 'she/her to_be_present');
+        CraeAssert::same('herself', $she['reflexive'], 'she/her reflexive');
 
-        $they = ReportGrammar::resolvePronouns( 'they/them' );
-        CraeAssert::same( 'they', $they['subject'], 'they/them subject' );
-        CraeAssert::same( 'are', $they['to_be_present'], 'they/them plural verb' );
-        CraeAssert::same( 'were', $they['to_be_past'], 'they/them plural past verb' );
+        $they = ReportGrammar::resolvePronouns('they/them');
+        CraeAssert::same('they', $they['subject'], 'they/them subject');
+        CraeAssert::same('are', $they['to_be_present'], 'they/them plural verb');
+        CraeAssert::same('were', $they['to_be_past'], 'they/them plural past verb');
 
-        $he = ReportGrammar::resolvePronouns( 'unknown_value' );
-        CraeAssert::same( 'he', $he['subject'], 'default fallback pronoun' );
+        $he = ReportGrammar::resolvePronouns('unknown_value');
+        CraeAssert::same('he', $he['subject'], 'default fallback pronoun');
 
         // 2. Name sanitization, capitalization & possessive rules
-        CraeAssert::same( 'Alex', ReportGrammar::formatName( '<script>alert(1)</script>alex' ), 'XSS stripped from name' );
-        CraeAssert::same( 'the examinee', ReportGrammar::formatName( '' ), 'empty name fallback' );
-        CraeAssert::same( "Alex's", ReportGrammar::formatPossessive( 'alex' ), 'singular possessive' );
-        CraeAssert::same( "Lucas'", ReportGrammar::formatPossessive( 'lucas' ), 'trailing s possessive' );
-        CraeAssert::same( "the examinee's", ReportGrammar::formatPossessive( '' ), 'default possessive' );
+        CraeAssert::same('Alex', ReportGrammar::formatName('<script>alert(1)</script>alex'), 'XSS stripped from name');
+        CraeAssert::same('the examinee', ReportGrammar::formatName(''), 'empty name fallback');
+        CraeAssert::same("Alex's", ReportGrammar::formatPossessive('alex'), 'singular possessive');
+        CraeAssert::same("Lucas'", ReportGrammar::formatPossessive('lucas'), 'trailing s possessive');
+        CraeAssert::same("the examinee's", ReportGrammar::formatPossessive(''), 'default possessive');
 
         // 3. Oxford comma list formatting
-        CraeAssert::same( '', ReportGrammar::joinList( [] ), 'empty list' );
-        CraeAssert::same( 'Hyperactivity', ReportGrammar::joinList( [ 'Hyperactivity' ] ), '1-item list' );
-        CraeAssert::same( 'Hyperactivity and Aggression', ReportGrammar::joinList( [ 'Hyperactivity', 'Aggression' ] ), '2-item list' );
-        CraeAssert::same( 'Hyperactivity, Aggression, and Anxiety', ReportGrammar::joinList( [ 'Hyperactivity', 'Aggression', 'Anxiety' ] ), '3-item Oxford list' );
+        CraeAssert::same('', ReportGrammar::joinList([]), 'empty list');
+        CraeAssert::same('Hyperactivity', ReportGrammar::joinList(['Hyperactivity']), '1-item list');
+        CraeAssert::same('Hyperactivity and Aggression', ReportGrammar::joinList(['Hyperactivity', 'Aggression']), '2-item list');
+        CraeAssert::same('Hyperactivity, Aggression, and Anxiety', ReportGrammar::joinList(['Hyperactivity', 'Aggression', 'Anxiety']), '3-item Oxford list');
 
         // 4. Informant extraction & teacher/parent classification
         $informants = InformantManager::extractInformants(
@@ -49,9 +52,20 @@ final class ReportGrammarTest {
                 'informant_two_relationship' => 'Mother',
             ]
         );
-        CraeAssert::true( $informants[0]['is_teacher'], 'Rater 1 detected as teacher' );
-        CraeAssert::true( $informants[1]['is_parent'], 'Rater 2 detected as parent' );
-        CraeAssert::same( 2, InformantManager::resolveActiveRaterCount( [ '0' => 'Two-row' ] ), 'Active rater count=2' );
+        CraeAssert::true($informants[0]['is_teacher'], 'Rater 1 detected as teacher');
+        CraeAssert::true($informants[1]['is_parent'], 'Rater 2 detected as parent');
+        CraeAssert::same(2, InformantManager::resolveActiveRaterCount(['0' => 'Two-row']), 'Active rater count=2');
+
+        // 5. Narrative Grammer and punctuation cleaner
+        $dirtyText = '<p>John scored in a Average range, which indicates .</p>';
+        $cleaned = ReportGrammar::cleanNarrative($dirtyText);
+        CraeAssert::contains('an Average range, which', $cleaned, 'Fixes article and punctuation space');
+
+        $dupText = 'John scored in the the average range.. He performed well.';
+        $cleanedDup = ReportGrammar::cleanNarrative($dupText);
+        CraeAssert::same('John scored in the average range. He performed well.', $cleanedDup, 'Fixes duplicates and double dots');
+        $numArticle = 'He obtained a 85th percentile rank.';
+        $cleanedNum = ReportGrammar::cleanNarrative($numArticle);
+        CraeAssert::same('He obtained an 85th percentile rank.', $cleanedNum, 'Fixes a vs an for 80s percentiles');
     }
 }
-
