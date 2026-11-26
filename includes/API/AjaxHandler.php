@@ -151,9 +151,18 @@ class AjaxHandler
             if ($e instanceof \WPDieException || get_class($e) === 'AjaxDieException') {
                 throw $e;
             }
-            wp_send_json_error([
+            $errorData = [
                 'message' => $e->getMessage(),
-            ], 500);
+            ];
+            // If the token was consumed before this error occurred, issue a replacement token so subsequent retries succeed without page refresh
+            if (null !== $this->tokenService && $userId > 0) {
+                $currentUser = wp_get_current_user();
+                if ($currentUser->exists()) {
+                    $nextIssued = $this->tokenService->issueForUser($currentUser);
+                    $errorData['next_psivey_token'] = $nextIssued['token'] ?? '';
+                }
+            }
+            wp_send_json_error($errorData, 500);
         }
     }
 

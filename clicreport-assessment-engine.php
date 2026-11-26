@@ -3,7 +3,7 @@
  * Plugin Name:       ClicReport Assessment & Clinical Narrative Engine
  * Plugin URI:        https://clicreport.com/plugins/clicreport-assessment-engine
  * Description:       Enterprise psychoeducational assessment scoring, multi-rater clinical narrative generation across 201 templates (5 psychometric archetypes), and Psivey AI integration for WordPress.
- * Version:           1.0.7
+ * Version:           1.0.9
  * Requires at least: 6.2
  * Requires PHP:      8.0
  * Author:            Imara Software Solutions

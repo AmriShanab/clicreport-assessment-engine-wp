@@ -50,6 +50,15 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
             );
         }
 
+        if ( 'report-basc-3-self-report' === $slug ) {
+            return $this->processBasc3SelfReport(
+                $templateRow,
+                $inputData,
+                $context,
+                $scales
+            );
+        }
+
         $context['raters_intro'] = InformantManager::buildRatersIntro( $informants, $activeRatersCount, $context['possessive'] );
 
         $isPreschool  = $this->isFlagActive( $inputData['pre_school_h'] ?? null );
@@ -110,9 +119,7 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
 
                 $raterScores = [];
                 for ( $r = 1; $r <= max( 3, $activeRatersCount ); $r++ ) {
-                    $rawVal = $inputData[ "{$scaleKey}_{$r}" ]
-                        ?? ( $inputData[ "{$scaleKey}_" . ( $r - 1 ) ]
-                        ?? ( 1 === $r ? ( $inputData[ $scaleKey ] ?? ( $inputData['scores'][ $scaleKey ] ?? null ) ) : null ) );
+                    $rawVal = $this->extractRaterScoreValue( $inputData, $scaleKey, $r );
                     $raterScores[ $r ] = AssessmentScorer::classifyTScoreByProfile( $rawVal, $scaleType, $tScoreProfile );
                 }
 
@@ -178,19 +185,33 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
             }
         }
 
-        if ( empty( $scales ) && ! empty( $inputData['scores'] ) && is_array( $inputData['scores'] ) ) {
-            if ( ! empty( $templateRow['intro_narrative'] ) ) {
-                $narrativeHtml .= "<p class='Social-body_n'>" . NarrativeInterpolator::render( $templateRow['intro_narrative'], $context ) . '</p>';
-            }
-            foreach ( $inputData['scores'] as $key => $val ) {
-                $scored = AssessmentScorer::classifyTScoreByProfile( $val, 'clinical', $tScoreProfile );
-                if ( null === $scored['score'] ) {
-                    continue;
+        if ( empty( $scales ) ) {
+            $scoreInputs = [];
+            if ( ! empty( $inputData['scores'] ) && is_array( $inputData['scores'] ) ) {
+                $scoreInputs = $inputData['scores'];
+            } else {
+                foreach ( $inputData as $k => $v ) {
+                    if ( is_numeric( $v ) && ! in_array( $k, [ 'active_raters', 'user_id', 'nonce', 'timestamp' ], true ) ) {
+                        $cleanKey = preg_replace( '/_[0-9]+$/', '', $k );
+                        $scoreInputs[ $cleanKey ] = (float) $v;
+                    }
                 }
-                $title                     = ucwords( str_replace( [ '_', '-' ], ' ', sanitize_text_field( (string) $key ) ) );
-                $scoresEvaluated[ $key ]   = array_merge( [ 'title' => $title, 'profile' => $tScoreProfile ], $scored );
-                $keyAttr                   = esc_attr( sanitize_key( (string) $key ) );
-                $narrativeHtml            .= "<p class='{$keyAttr}_p'><strong>" . esc_html( $title ) . ':</strong> ' . esc_html( $context['examinee_name'] ) . " earned a T-score of {$scored['score']} ({$scored['percentile_ordinal']} percentile), which falls within the <strong>" . esc_html( $scored['range'] ) . '</strong> range.</p>';
+            }
+
+            if ( ! empty( $scoreInputs ) ) {
+                if ( ! empty( $templateRow['intro_narrative'] ) ) {
+                    $narrativeHtml .= "<p class='Social-body_n'>" . NarrativeInterpolator::render( $templateRow['intro_narrative'], $context ) . '</p>';
+                }
+                foreach ( $scoreInputs as $key => $val ) {
+                    $scored = AssessmentScorer::classifyTScoreByProfile( $val, 'clinical', $tScoreProfile );
+                    if ( null === $scored['score'] ) {
+                        continue;
+                    }
+                    $title                     = ucwords( str_replace( [ '_', '-' ], ' ', sanitize_text_field( (string) $key ) ) );
+                    $scoresEvaluated[ $key ]   = array_merge( [ 'title' => $title, 'profile' => $tScoreProfile ], $scored );
+                    $keyAttr                   = esc_attr( sanitize_key( (string) $key ) );
+                    $narrativeHtml            .= "<p class='{$keyAttr}_p'><strong>" . esc_html( $title ) . ':</strong> ' . esc_html( $context['examinee_name'] ) . " earned a T-score of {$scored['score']} ({$scored['percentile_ordinal']} percentile), which falls within the <strong>" . esc_html( $scored['range'] ) . '</strong> range.</p>';
+                }
             }
         }
 
@@ -782,6 +803,253 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
             'withdrawal'             => " The presence of an elevated score suggests that {$name} may be struggling with anxiety about social interactions.",
             default                  => '',
         };
+    }
+
+    /**
+     * Dedicated Processor for BASC-3 Self-Report of Personality (SRP Child / Adolescent)
+     */
+    private function processBasc3SelfReport(
+        array $templateRow,
+        array $inputData,
+        array $context,
+        array $scales
+    ): array {
+        $first_name = $context['name'];
+        $possName   = $context['possessive_name'];
+        $he_she     = $context['subject'];
+        $his_her    = $context['possessive'];
+        $him_her    = $context['object'];
+        $isChild    = ! empty( $inputData['SRP_button'] ) && ( '1' === (string) $inputData['SRP_button'] || true === $inputData['SRP_button'] );
+
+        $classifyClinical = static function( $val ): array {
+            $v = is_numeric( $val ) ? (float) $val : 50;
+            if ( $v < 60 ) {
+                return [ 'desc' => 'average', 'stars' => '', 'val' => $v ];
+            }
+            if ( $v < 70 ) {
+                return [ 'desc' => 'at-risk', 'stars' => '*', 'val' => $v ];
+            }
+            return [ 'desc' => 'clinically significant', 'stars' => '**', 'val' => $v ];
+        };
+
+        $classifyAdaptive = static function( $val ): array {
+            $v = is_numeric( $val ) ? (float) $val : 50;
+            if ( $v < 31 ) {
+                return [ 'desc' => 'clinically significant', 'stars' => '**', 'val' => $v ];
+            }
+            if ( $v < 41 ) {
+                return [ 'desc' => 'at-risk', 'stars' => '*', 'val' => $v ];
+            }
+            return [ 'desc' => 'average', 'stars' => '', 'val' => $v ];
+        };
+
+        $scoresEvaluated = [];
+        $rawScores       = [];
+
+        $getScore = static function( string $key, bool $isAdaptive = false ) use ( &$scoresEvaluated, &$rawScores, $inputData, $classifyClinical, $classifyAdaptive ): array {
+            $val = $inputData[ "{$key}_1" ] ?? ( $inputData[ $key ] ?? 50 );
+            $cls = $isAdaptive ? $classifyAdaptive( $val ) : $classifyClinical( $val );
+            $rawScores[ $key ]       = $cls;
+            $scoresEvaluated[ $key ] = [
+                'score'  => $cls['val'],
+                'range'  => $cls['desc'],
+                'stars'  => $cls['stars'],
+                'raters' => [
+                    1 => [
+                        'score' => $cls['val'],
+                        'range' => $cls['desc'],
+                        'stars' => $cls['stars'],
+                    ],
+                ],
+            ];
+            return $cls;
+        };
+
+        $school_pro = $getScore( 'school_problems' );
+        $att_school = $getScore( 'attitude_to_school' );
+        $att_teach  = $getScore( 'attitude_to_teachers' );
+        $sens_seek  = $getScore( 'sensation_seeking' );
+
+        $int_prob   = $getScore( 'internalizing_problems' );
+        $atypical   = $getScore( 'atypicality' );
+        $locus_ctrl = $getScore( 'locus_of_control' );
+        $somatiz    = $getScore( 'somatization' );
+        $soc_stress = $getScore( 'social_stress' );
+        $anxiety    = $getScore( 'anxiety' );
+        $depress    = $getScore( 'depression' );
+        $sense_inad = $getScore( 'sense_of_inadequacy' );
+
+        $inatt_hyp  = $getScore( 'inattention_hyperactivity' );
+        $att_prob   = $getScore( 'attention_problems' );
+        $hyperact   = $getScore( 'hyperactivity' );
+
+        $pers_adj   = $getScore( 'personal_adjustment', true );
+        $rel_parent = $getScore( 'relations_with_parents', true );
+        $inter_rel  = $getScore( 'interpersonal_relations', true );
+        $self_est   = $getScore( 'selfesteem', true );
+        $self_rel   = $getScore( 'selfreliance', true );
+
+        $esi        = $getScore( 'selfre' );
+
+        $f_index  = strtolower( trim( (string) ( $inputData['f_index'] ?? 'acceptable' ) ) );
+        $l_index  = strtolower( trim( (string) ( $inputData['L_Index'] ?? 'acceptable' ) ) );
+        $v_index  = strtolower( trim( (string) ( $inputData['V_Index'] ?? 'acceptable' ) ) );
+
+        $p1 = "<p class=''>In order to obtain information regarding {$possName} interpretation of {$his_her} social/emotional and behavioral functioning, the Behavior Assessment System for Children, Third Edition Self Report of Personality (BASC-3 SRP) was completed by {$first_name}. The BASC-3 is a multidimensional approach to evaluating the behavior of children and adolescents. It measures numerous aspects of behavior and personality, including positive (adaptive) as well as negative (clinical) dimensions. Scores in the clinically significant range suggest a high level of maladjustment, while scores in the at-risk range identify either a significant problem that may not be severe enough to require formal treatment or the potential of developing a problem that needs careful monitoring.</p>";
+
+        $att_school_text = ( $att_school['val'] >= 60 ) ? 'dislikes school and often wishes to be elsewhere' : 'likes school';
+        $att_teach_text  = ( $att_teach['val'] >= 60 ) ? 'difficulty with, and/or disliking,' : 'age appropriate attitudes towards';
+        $sens_seek_text  = ( $sens_seek['val'] >= 60 ) ? "more often than {$his_her} same aged peers." : "as often as others {$his_her} age.";
+
+        $p2 = "<p class=''>School Problems: This composite measures attitudes and behaviors that may be problematic for school success. {$first_name} reported {$school_pro['desc']} functioning on this composite. {$possName} ratings indicate that {$he_she} {$att_school_text}. Additionally, {$first_name} described {$him_her}self as having {$att_teach_text} {$his_her} teachers.";
+        if ( ! $isChild ) {
+            $p2 .= " Additionally, {$first_name} reported engaging in risky behaviors {$sens_seek_text}";
+        }
+        $p2 .= '</p>';
+
+        $atyp_text = ( $atypical['val'] >= 60 ) ? "thoughts that would be considered atypical for {$his_her} age," : 'appropriate thoughts and perceptions,';
+        $loc_text  = ( $locus_ctrl['val'] >= 60 ) ? 'little control over events occurring' : 'control over events that occur';
+        $soc_text  = ( $soc_stress['val'] >= 60 ) ? 'often feels lonely, isolated, and/or bullied.' : 'does not often experience feelings of loneliness.';
+        $som_text  = ( $somatiz['val'] >= 60 ) ? 'has a tendency of experiencing an odd amount of health-related problems such as headaches, sore muscles, stomach ailments, and/or dizziness.' : 'does not have a tendency of experiencing an odd amount of health-related problems.';
+
+        $anx_elev = $anxiety['val'] >= 60;
+        $dep_elev = $depress['val'] >= 60;
+        if ( $anx_elev && $dep_elev ) {
+            $anx_dep_text = "{$first_name} reported a high level of anxiety-based feelings, as well as feelings of depression.";
+        } elseif ( $anx_elev && ! $dep_elev ) {
+            $anx_dep_text = "while {$first_name} did not report significant depressed feelings {$he_she} did report high levels of anxiety.";
+        } elseif ( ! $anx_elev && $dep_elev ) {
+            $anx_dep_text = "while {$first_name} did not report significant anxiety-based feelings {$he_she} did report high levels of depression.";
+        } else {
+            $anx_dep_text = "{$first_name} did not report significant anxiety-based feelings or feelings of depression.";
+        }
+
+        $inad_text = ( $sense_inad['val'] >= 60 ) ? "sometimes being dissatisfied with {$his_her} ability to perform a variety of tasks even when putting forth a substantial effort." : 'being satisfied with ' . $his_her . ' ability to perform a variety of tasks.';
+
+        $p3 = "<p class=''>Internalizing Problems: This composite measures depression, anxiety, and similar difficulties that are not usually marked by acting out behaviors. {$first_name} reported {$int_prob['desc']} functioning on this composite. More specifically, {$first_name} reported that {$he_she} has {$atyp_text} feels that {$he_she} has {$loc_text} in {$his_her} life, and reported that {$he_she} {$soc_text}";
+        if ( ! $isChild ) {
+            $p3 .= " {$first_name} indicated that {$he_she} {$som_text}";
+        }
+        $p3 .= " Additionally, {$anx_dep_text} Furthermore, {$first_name} reported {$inad_text}</p>";
+
+        $att_elev = $att_prob['val'] >= 60;
+        $hyp_elev = $hyperact['val'] >= 60;
+        if ( $att_elev && $hyp_elev ) {
+            $att_hyp_text = "reported a high level of difficulty sustaining attention, as well as high levels of hyperactivity that could be affecting {$his_her} classroom performance.";
+        } elseif ( $att_elev && ! $hyp_elev ) {
+            $att_hyp_text = "did not report significant hyperactivity problems, but did report attention difficulties that could be affecting {$his_her} classroom performance.";
+        } elseif ( ! $att_elev && $hyp_elev ) {
+            $att_hyp_text = "did not report significant difficulties sustaining attention, but did report high levels of hyperactive behavior that could be affecting {$his_her} classroom performance.";
+        } else {
+            $att_hyp_text = 'did not report significant concerns for attention or hyperactivity.';
+        }
+
+        $p4 = "<p class=''>Inattention/Hyperactivity: This composite measures problems with attention, hyperactivity, and impulsivity. {$possName} Inattention/Hyperactivity composite was reported to be within the {$inatt_hyp['desc']} range of functioning. Specifically, {$first_name} {$att_hyp_text}</p>";
+
+        $rel_par_text   = ( $rel_parent['val'] < 41 ) ? 'strained' : 'positive';
+        $inter_rel_text = ( $inter_rel['val'] < 41 ) ? 'has difficulty with peer relations,' : "feels liked and respected by {$his_her} peers,";
+        $self_est_text  = ( $self_est['val'] < 41 ) ? "reports negative feelings about {$his_her} self-worth" : "generally reports liking {$his_her} self";
+        $self_rel_text  = ( $self_rel['val'] < 41 ) ? "has insecurities about {$his_her} abilities." : "feels confident in {$his_her} own abilities.";
+
+        $p5 = "<p class=''>Personal Adjustment: This composite measures problems with interpersonal relations and perceptions of self. {$first_name} rated {$his_her} overall personal adjustment to be within the {$pers_adj['desc']} range. More specifically, {$first_name} reported that {$he_she} has a {$rel_par_text} relationship with {$his_her} parents, {$inter_rel_text} {$self_est_text}, and often {$self_rel_text}</p>";
+
+        $p6 = "<p class='ch1'>The BASC-3 Rating Scales assess a rater's response pattern to determine how results should be interpreted. {$possName} rating consistency, response pattern, and F-Index were considered to be {$f_index}, indicating that these ratings are likely a valid representation of {$possName} current behavior/social-emotional functioning. Additionally, {$his_her} ratings were in the {$l_index} range for the L-Index, and within the {$v_index} range for the V-Index.</p>";
+
+        $html = $p1 . $p2 . $p3 . $p4 . $p5 . $p6;
+
+        return [
+            'examinee'         => $context['examinee_name'],
+            'pronouns'         => $context,
+            'scores_evaluated' => $scoresEvaluated,
+            'narrative_html'   => $html,
+        ];
+    }
+
+    /**
+     * Intelligently extract score value for a scale and rater from input data,
+     * supporting exact keys, 0-indexed/1-indexed conventions, word numbers (_one, _two),
+     * parent composite suffixes (e.g. initiate_1_cri), and full descriptive HTML input IDs (e.g. global_executive_composite_gec_1).
+     */
+    private function extractRaterScoreValue( array $inputData, string $scaleKey, int $raterIdx ): mixed {
+        $r0 = $raterIdx - 1;
+        $candidateKeys = [
+            "{$scaleKey}_{$raterIdx}",
+            "{$scaleKey}_{$r0}",
+        ];
+
+        // Specific aliases for common templates (e.g. BRIEF-2, BASC-3, SRS-2)
+        $aliasMap = [
+            'gec' => [ 'global_executive_composite_gec', 'global_executive_composite', 'gec_composite' ],
+            'bri' => [ 'behavioral_regulation_index_bri', 'behavior_regulation_index_bri', 'behavioral_regulation_index', 'behavior_regulation_index' ],
+            'eri' => [ 'emotional_regulation_index_eri', 'emotion_regulation_index_eri', 'emotional_regulation_index', 'emotion_regulation_index' ],
+            'cri' => [ 'cognitive_regulation_index_cri', 'cognitive_regulation_index' ],
+            'initiate' => [ 'initiate_cri', 'cri_initiate' ],
+            'adaptive_skills' => [ 'adaptive_skills_tscores_reversed', 'adaptive_skills_composite' ],
+            'behavioral_symptoms' => [ 'behavioral_symptoms_index', 'bsi' ],
+            'externalizing_problems' => [ 'externalizing_problems_index', 'externalizing' ],
+            'internalizing_problems' => [ 'internalizing_problems_index', 'internalizing' ],
+        ];
+
+        // Word numbers for templates like SRS-2 (e.g. total_score_one, total_score_two)
+        $words = [ 1 => 'one', 2 => 'two', 3 => 'three', 4 => 'four', 5 => 'five' ];
+        if ( isset( $words[ $raterIdx ] ) ) {
+            $candidateKeys[] = "{$scaleKey}_{$words[ $raterIdx ]}";
+        }
+
+        if ( isset( $aliasMap[ $scaleKey ] ) ) {
+            foreach ( $aliasMap[ $scaleKey ] as $alias ) {
+                $candidateKeys[] = "{$alias}_{$raterIdx}";
+                $candidateKeys[] = "{$alias}_{$r0}";
+                if ( isset( $words[ $raterIdx ] ) ) {
+                    $candidateKeys[] = "{$alias}_{$words[ $raterIdx ]}";
+                }
+            }
+        }
+
+        if ( 1 === $raterIdx ) {
+            $candidateKeys[] = $scaleKey;
+            if ( isset( $aliasMap[ $scaleKey ] ) ) {
+                foreach ( $aliasMap[ $scaleKey ] as $alias ) {
+                    $candidateKeys[] = $alias;
+                }
+            }
+        }
+
+        foreach ( $candidateKeys as $k ) {
+            if ( isset( $inputData[ $k ] ) && '' !== $inputData[ $k ] ) {
+                return $inputData[ $k ];
+            }
+            if ( isset( $inputData['scores'][ $k ] ) && '' !== $inputData['scores'][ $k ] ) {
+                return $inputData['scores'][ $k ];
+            }
+        }
+
+        // Fuzzy suffix/infix search across all input keys (e.g. initiate_1_cri, global_executive_composite_gec_1, communication_domain2)
+        $patterns = [ preg_quote( $scaleKey, '/' ) ];
+        if ( isset( $aliasMap[ $scaleKey ] ) ) {
+            foreach ( $aliasMap[ $scaleKey ] as $alias ) {
+                $patterns[] = preg_quote( $alias, '/' );
+            }
+        }
+
+        $numSuffixes = [ (string) $raterIdx, (string) $r0 ];
+        if ( isset( $words[ $raterIdx ] ) ) {
+            $numSuffixes[] = $words[ $raterIdx ];
+        }
+        $numRegex = '(' . implode( '|', $numSuffixes ) . ')';
+
+        foreach ( $patterns as $p ) {
+            foreach ( $inputData as $k => $v ) {
+                if ( '' === $v || null === $v || ! is_numeric( $v ) ) {
+                    continue;
+                }
+                if ( preg_match( '/(^|_)' . $p . '(_?' . $numRegex . ')(\b|_|$)/i', $k ) ) {
+                    return $v;
+                }
+            }
+        }
+
+        return null;
     }
 }
 

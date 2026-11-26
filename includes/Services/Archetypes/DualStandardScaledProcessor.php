@@ -230,6 +230,14 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
 
         if (empty($scales)) {
             $dynamicScores = $inputData['scores'] ?? [];
+            if (empty($dynamicScores)) {
+                foreach ($inputData as $k => $v) {
+                    if (is_numeric($v) && ! in_array($k, ['active_raters', 'user_id', 'nonce', 'timestamp', 'allow_partial'], true)) {
+                        $cleanKey = preg_replace('/_[0-9]+$/', '', $k);
+                        $dynamicScores[$cleanKey] = (float) $v;
+                    }
+                }
+            }
             foreach ($dynamicScores as $key => $val) {
                 $scored = AssessmentScorer::classifyStandardScore($val);
                 if (null === $scored['score']) {
@@ -382,6 +390,20 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
                 return $inputData['subtests'][$k];
             }
         }
+
+        // Fuzzy search: any key ending with _{key} or {domain}_{key} (e.g. general_similarities, nonverbal_block_design)
+        foreach ($candidateKeys as $ck) {
+            $pattern = '/(^|_)' . preg_quote($ck, '/') . '$/i';
+            foreach ($inputData as $k => $v) {
+                if ('' === $v || null === $v || ! is_numeric($v)) {
+                    continue;
+                }
+                if (preg_match($pattern, $k)) {
+                    return $v;
+                }
+            }
+        }
+
         return null;
     }
 }
