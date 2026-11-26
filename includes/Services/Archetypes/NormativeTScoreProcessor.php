@@ -988,6 +988,8 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
             'behavioral_symptoms' => [ 'behavioral_symptoms_index', 'bsi' ],
             'externalizing_problems' => [ 'externalizing_problems_index', 'externalizing' ],
             'internalizing_problems' => [ 'internalizing_problems_index', 'internalizing' ],
+            'total_sensory' => [ 'total_sensory_system_score', 'total_sensory_system' ],
+            'restricted_interests' => [ 'restricted_interests_and_repetitive_behavior' ],
         ];
 
         // Word numbers for templates like SRS-2 (e.g. total_score_one, total_score_two)

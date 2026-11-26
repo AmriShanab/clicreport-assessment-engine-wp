@@ -360,7 +360,14 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
 
     private function extractScoreValue(array $inputData, string $key): mixed
     {
-        $candidateKeys = [$key];
+        $candidateKeys = [
+            $key,
+            "{$key}_1",
+            "{$key}1",
+            "{$key}_score",
+            "{$key}_standard",
+            "{$key}_scaled",
+        ];
         $aliasMap      = [
             'fsiq'                 => ['full_scale_iq', 'full_scale', 'fsiq_composite'],
             'vci'                  => ['verbal_comprehension', 'verbal_comprehension_index'],
@@ -374,9 +381,19 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
             'fluid_reasoning'      => ['fri'],
             'working_memory'       => ['wmi'],
             'processing_speed'     => ['psi'],
+            'core_language'        => ['core_language_score', 'core_language_score.'],
+            'communication'        => ['communication_domain', 'communication_domain1', 'communication_domain_1'],
+            'daily_living_skills'  => ['daily_living_skills_domain', 'daily_living_skills_domain1', 'daily_living_skills_domain_1'],
+            'domestic'             => ['domesticnumeric', 'domesticnumeric1', 'domesticnumeric_1'],
+            'socialization'        => ['socialization_domain', 'socialization_domain1', 'socialization_domain_1'],
+            'play_and_leisure'     => ['play_and_leisure_time', 'play_and_leisure_time1', 'play_and_leisure_time_1'],
         ];
         if (isset($aliasMap[$key])) {
-            $candidateKeys = array_merge($candidateKeys, $aliasMap[$key]);
+            foreach ($aliasMap[$key] as $alias) {
+                $candidateKeys[] = $alias;
+                $candidateKeys[] = "{$alias}_1";
+                $candidateKeys[] = "{$alias}1";
+            }
         }
 
         foreach ($candidateKeys as $k) {

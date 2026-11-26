@@ -49,6 +49,9 @@
         }));
 
         var json = await response.json();
+        if (json && json.data && json.data.next_psivey_token) {
+            cfg.psiveyToken = json.data.next_psivey_token;
+        }
         if (!response.ok) {
             var errMsg = (json && (json.message || (json.data && json.data.message))) || ('HTTP ' + response.status);
             var err = new Error(errMsg);
@@ -95,12 +98,12 @@
             })
             .then(function (res) { return res.json(); })
             .then(function (json) {
+                if (json.data && json.data.next_psivey_token) {
+                    cfg.psiveyToken = json.data.next_psivey_token;
+                }
                 if (!json.success) {
                     var msg = (json.data && json.data.message) ? json.data.message : 'Report generation failed.';
                     throw new Error(msg);
-                }
-                if (json.data && json.data.next_psivey_token) {
-                    cfg.psiveyToken = json.data.next_psivey_token;
                 }
                 return json.data;
             });
