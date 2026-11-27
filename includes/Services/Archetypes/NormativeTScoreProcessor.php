@@ -59,6 +59,17 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
             );
         }
 
+        if ( 'report-brief-2' === $slug ) {
+            return $this->processBrief2(
+                $templateRow,
+                $inputData,
+                $context,
+                $informants,
+                $activeRatersCount,
+                $tScoreProfile
+            );
+        }
+
         $context['raters_intro'] = InformantManager::buildRatersIntro( $informants, $activeRatersCount, $context['possessive'] );
 
         $isPreschool  = $this->isFlagActive( $inputData['pre_school_h'] ?? null );
@@ -956,6 +967,339 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
         $p6 = "<p class='ch1'>The BASC-3 Rating Scales assess a rater's response pattern to determine how results should be interpreted. {$possName} rating consistency, response pattern, and F-Index were considered to be {$f_index}, indicating that these ratings are likely a valid representation of {$possName} current behavior/social-emotional functioning. Additionally, {$his_her} ratings were in the {$l_index} range for the L-Index, and within the {$v_index} range for the V-Index.</p>";
 
         $html = $p1 . $p2 . $p3 . $p4 . $p5 . $p6;
+
+        return [
+            'examinee'         => $context['examinee_name'],
+            'pronouns'         => $context,
+            'scores_evaluated' => $scoresEvaluated,
+            'narrative_html'   => $html,
+        ];
+    }
+
+    /**
+     * Specialized processor for BRIEF-2 Behavior Rating Inventory of Executive Function, Second Edition.
+     * Replicates the exact 5-paragraph clinical synthesis from the live ClickReport application.
+     */
+    private function processBrief2(
+        array $templateRow,
+        array $inputData,
+        array $context,
+        array $informants,
+        int $activeRatersCount,
+        string $tScoreProfile
+    ): array {
+        $examinee_name   = ! empty( $context['name'] ) ? esc_html( $context['name'] ) : 'the examinee';
+        $examinee_name_2 = ! empty( $context['name'] ) ? esc_html( $context['name'] ) : 'The Examinee';
+        $his_her         = ! empty( $context['possessive'] ) ? esc_html( $context['possessive'] ) : 'his';
+
+        $infor_dropbox1  = esc_html( $informants[0]['relation'] ?? 'mother' );
+        $informer_title0 = esc_html( $informants[0]['name'] ?? 'Rater One' );
+
+        $infor_dropbox2  = esc_html( $informants[1]['relation'] ?? 'general education teacher' );
+        $informer_title1 = esc_html( $informants[1]['name'] ?? 'Rater Two' );
+
+        $infor_dropbox3  = esc_html( $informants[2]['relation'] ?? 'general education teacher' );
+        $informer_title2 = esc_html( $informants[2]['name'] ?? 'Rater Three' );
+
+        // Extract Validity Scales
+        $negOne = strtolower( trim( (string) ( $inputData['negativity'] ?? ( $inputData['negOne'] ?? 'acceptable' ) ) ) );
+        $incOne = strtolower( trim( (string) ( $inputData['inconsistency'] ?? ( $inputData['incOne'] ?? 'acceptable' ) ) ) );
+        $infOne = strtolower( trim( (string) ( $inputData['infrequency'] ?? ( $inputData['infOne'] ?? 'acceptable' ) ) ) );
+
+        $negTwo = strtolower( trim( (string) ( $inputData['negativity1'] ?? ( $inputData['negTwo'] ?? 'acceptable' ) ) ) );
+        $incTwo = strtolower( trim( (string) ( $inputData['inconsistency1'] ?? ( $inputData['incTwo'] ?? 'acceptable' ) ) ) );
+        $infTwo = strtolower( trim( (string) ( $inputData['infrequency1'] ?? ( $inputData['infTwo'] ?? 'acceptable' ) ) ) );
+
+        $negThree = strtolower( trim( (string) ( $inputData['negativity2'] ?? ( $inputData['negThree'] ?? 'acceptable' ) ) ) );
+        $incThree = strtolower( trim( (string) ( $inputData['inconsistency2'] ?? ( $inputData['incThree'] ?? 'acceptable' ) ) ) );
+        $infThree = strtolower( trim( (string) ( $inputData['infrequency2'] ?? ( $inputData['infThree'] ?? 'acceptable' ) ) ) );
+
+        $scaleMeta = [
+            'gec'                       => [ 'title' => 'Global Executive Composite (GEC)', 'type' => 'clinical' ],
+            'bri'                       => [ 'title' => 'Behavior Regulation Index (BRI)', 'type' => 'clinical' ],
+            'inhibit'                   => [ 'title' => 'Inhibit', 'type' => 'clinical' ],
+            'selfmonitor'               => [ 'title' => 'Self-Monitor', 'type' => 'clinical' ],
+            'eri'                       => [ 'title' => 'Emotion Regulation Index (ERI)', 'type' => 'clinical' ],
+            'shift'                     => [ 'title' => 'Shift', 'type' => 'clinical' ],
+            'emotional_control'         => [ 'title' => 'Emotional Control', 'type' => 'clinical' ],
+            'cri'                       => [ 'title' => 'Cognitive Regulation Index (CRI)', 'type' => 'clinical' ],
+            'initiate'                  => [ 'title' => 'Initiate', 'type' => 'clinical' ],
+            'working_memory'            => [ 'title' => 'Working Memory', 'type' => 'clinical' ],
+            'planorganize'              => [ 'title' => 'Plan/Organize', 'type' => 'clinical' ],
+            'taskmonitor'               => [ 'title' => 'Task-Monitor', 'type' => 'clinical' ],
+            'organization_of_materials' => [ 'title' => 'Organization of Materials', 'type' => 'clinical' ],
+        ];
+
+        $getRange = function( $val ) {
+            if ( null === $val || '' === $val || 'N/A' === $val ) {
+                return 'average';
+            }
+            $v = (float) $val;
+            if ( $v > 59 ) {
+                if ( $v >= 60 && $v <= 64 ) {
+                    return 'mildly elevated';
+                }
+                if ( $v >= 65 && $v <= 69 ) {
+                    return 'potentially clinically elevated';
+                }
+                return 'clinically elevated';
+            }
+            return 'average';
+        };
+
+        $scoresEvaluated = [];
+        $rawScores       = [];
+        $ranges          = [];
+
+        foreach ( $scaleMeta as $sKey => $m ) {
+            $raterScores = [];
+            for ( $r = 1; $r <= max( 3, $activeRatersCount ); $r++ ) {
+                $rawVal                   = $this->extractRaterScoreValue( $inputData, $sKey, $r );
+                $raterScores[ $r ]        = AssessmentScorer::classifyTScoreByProfile( $rawVal, $m['type'], $tScoreProfile );
+                $rawScores[ $sKey ][ $r ] = $rawVal;
+                $ranges[ $sKey ][ $r ]    = $getRange( $rawVal );
+            }
+            $scoresEvaluated[ $sKey ] = [
+                'title'      => $m['title'],
+                'scale_type' => $m['type'],
+                'profile'    => $tScoreProfile,
+                'raters'     => $raterScores,
+            ];
+        }
+
+        $executiveFunctioning        = '';
+        $behavioral_regulation_index = '';
+        $emotional_regulation_index  = '';
+        $cognitive_regulation_index  = '';
+        $brief_2_rating_salses       = '';
+
+        if ( $activeRatersCount <= 1 ) {
+            $executiveFunctioning .= "Executive functions are a collection of processes that are responsible for guiding, directing, and managing cognitive, emotional, and behavioral functions, particularly during active, novel problem solving. In order to obtain information regarding {$examinee_name}'s executive functioning, the Behavior Rating Inventory of Executive Function, Second Edition (BRIEF-2) was completed by {$his_her} {$infor_dropbox1}, {$informer_title0}. The BRIEF-2 is designed for individuals ages 5 to 18 for whom there may be a concern about self-regulation. BRIEF-2 T-scores have a mean of 50 and a standard deviation of 10. BRIEF-2 scores 60-64 are considered mildly elevated, scores 65-69 are considered potentially clinically elevated and scores of 70 and above are typically considered clinically elevated or clinically significant. {$examinee_name_2}'s functioning was assessed through three broad Composites: Behavior Regulation, Emotion Regulation, and Cognitive Regulation. The BRIEF-2 also provides a Global Executive Composite (GEC) score that serves as an overall estimate of executive functioning. {$examinee_name_2}'s GEC was rated to be within the " . $ranges['gec'][1] . ' range. ';
+
+            $behavioral_regulation_index .= "Behavior Regulation Index: This composite represents a student's ability to regulate and monitor behavior effectively. {$examinee_name_2}'s overall level of behavior regulation problems was rated to be in the " . $ranges['bri'][1] . ' range.';
+            $behavioral_regulation_index .= " Specifically, {$informer_title0} rated {$examinee_name}'s ability to control {$his_her} impulses (inhibit) within the " . $ranges['inhibit'][1] . " range, and {$his_her} ability to self-monitor within the " . $ranges['selfmonitor'][1] . ' range. ';
+
+            $emotional_regulation_index .= "Emotional Regulation Index: The Emotion Regulation Index (ERI) represents a student's ability to regulate emotional responses including responding to changing situations. {$examinee_name_2}'s overall level of emotional regulation skills were considered to be within the " . $ranges['eri'][1] . ' range. ';
+            $emotional_regulation_index .= "Specifically, {$informer_title0} rated {$examinee_name}'s ability to transition (Shift) to be within the " . $ranges['shift'][1] . " range, and ability to regulate {$his_her} emotions (Emotional Control) to be within the " . $ranges['emotional_control'][1] . ' range. ';
+
+            $cognitive_regulation_index .= "Cognitive Regulation Index: The Cognitive Regulation Index (CRI) represents a student's ability to control and manage cognitive processes and problem-solve effectively. {$examinee_name_2}'s overall CRI ability was rated to be within the " . $ranges['cri'][1] . ' range. ';
+            $cognitive_regulation_index .= "Specifically, {$informer_title0} rated {$examinee_name}'s ability to begin an activity or generate ideas (Initiate) to be within the " . $ranges['initiate'][1] . " range and {$his_her} ability to hold information in {$his_her} mind to be within the " . $ranges['working_memory'][1] . ' range. ';
+            $cognitive_regulation_index .= "It was also reported that {$examinee_name}'s ability to set goals was considered to be within the " . $ranges['planorganize'][1] . " range, ability to check {$his_her} work to be within the " . $ranges['taskmonitor'][1] . " range, and ability to keep {$his_her} work/play area clean and orderly to be within the " . $ranges['organization_of_materials'][1] . ' range.';
+
+            $brief_2_rating_salses .= "The BRIEF-2 Rating Scales assess a rater's response pattern to determine how results should be interpreted. ";
+            if ( $negOne === 'acceptable' && $incOne === 'acceptable' && $infOne === 'acceptable' ) {
+                $brief_2_rating_salses .= "{$informer_title0}'s Inconsistency, Infrequency, and Negativity Indices were all considered to be acceptable, indicating that these ratings are likely a valid representation of {$examinee_name}'s current behavioral functioning at this time. ";
+            } elseif ( $negOne !== 'acceptable' && $incOne === 'acceptable' && $infOne === 'acceptable' ) {
+                $brief_2_rating_salses .= "While {$informer_title0}'s ratings were considered acceptable for appropriate frequency and consistency, the Negativity scale indicates responses that were excessively negative, and the validity of these scores was in the {$negOne} range.";
+            } elseif ( $negOne === 'acceptable' && $incOne === 'acceptable' && $infOne !== 'acceptable' ) {
+                $brief_2_rating_salses .= "While {$informer_title0}'s ratings were considered acceptable for the Negativity Index and appropriate consistency, the Infrequency Index indicates that these scores are considered to have {$infOne} validity. ";
+            } elseif ( $negOne === 'acceptable' && $incOne !== 'acceptable' && $infOne === 'acceptable' ) {
+                $brief_2_rating_salses .= "While {$informer_title0}'s ratings were considered acceptable for the Negativity Index and Infrequency Index, the Inconsistency index indicates that these scores have {$incOne} validity. ";
+            } else {
+                $brief_2_rating_salses .= "{$informer_title0}'s Inconsistency, Infrequency, and Negativity Indices indicated that the results of these ratings should be interpreted with caution, and are likely not a valid representation of {$examinee_name}'s current behavioral functioning. ";
+            }
+
+            if ( $infOne !== 'acceptable' ) {
+                $brief_2_rating_salses .= ' The Infrequency Index identifies when the rater has used a pattern to mark answers (i.e. S,A,N,S,A,N,S,A,N). ';
+            }
+            if ( $incOne !== 'acceptable' ) {
+                $brief_2_rating_salses .= ' The Inconsistency Index identifies situations when the rater has given inconsistent responses to items that are typically answered in a similar way. ';
+            }
+        } elseif ( 2 === $activeRatersCount ) {
+            $executiveFunctioning .= "Executive functions are a collection of processes that are responsible for guiding, directing, and managing cognitive, emotional, and behavioral functions, particularly during active, novel problem solving. In order to obtain information regarding {$examinee_name}'s executive functioning at school and at home, the Behavior Rating Inventory of Executive Function, Second Edition (BRIEF-2) was completed by {$his_her} {$infor_dropbox1}, {$informer_title0} and {$infor_dropbox2}, {$informer_title1}. The BRIEF-2 is designed for individuals ages 5 to 18 for whom there may be a concern about self-regulation. BRIEF-2 T-scores have a mean of 50 and a standard deviation of 10. BRIEF-2 scores 60-64 are considered mildly elevated, scores 65-69 are considered potentially clinically elevated and scores of 70 and above are typically considered clinically elevated or clinically significant. {$examinee_name_2}'s GEC was within the ";
+
+            if ( $rawScores['gec'][1] == $rawScores['gec'][2] ) {
+                $executiveFunctioning .= $ranges['gec'][1] . " range by both {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $executiveFunctioning .= $ranges['gec'][1] . " range by {$informer_title0} and within the " . $ranges['gec'][2] . " range by {$his_her} {$infor_dropbox2}.";
+            }
+
+            $behavioral_regulation_index .= "Behavior Regulation Index: This composite represents a student's ability to regulate and monitor behavior effectively. {$examinee_name}'s overall level of behavior regulation problems was rated to be in the ";
+
+            if ( $rawScores['bri'][1] == $rawScores['bri'][2] ) {
+                $behavioral_regulation_index .= $ranges['bri'][1] . " range by both {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $behavioral_regulation_index .= $ranges['bri'][1] . " range by {$informer_title0} and within the " . $ranges['bri'][2] . " range by {$informer_title1}.";
+            }
+
+            if ( $rawScores['inhibit'][1] == $rawScores['inhibit'][2] && $rawScores['selfmonitor'][1] == $rawScores['selfmonitor'][2] ) {
+                $behavioral_regulation_index .= " Specifically, {$informer_title0} and {$informer_title1} rated {$examinee_name}'s ability to control {$his_her} impulses (inhibit) within the " . $ranges['inhibit'][1] . " range, and {$his_her} ability to self-monitor to be in the " . $ranges['selfmonitor'][1] . ' range. ';
+            } else {
+                $behavioral_regulation_index .= " Specifically, {$informer_title0} rated {$examinee_name}'s ability to control {$his_her} impulses (inhibit) within the " . $ranges['inhibit'][1] . " range, and {$his_her} ability to self-monitor in the " . $ranges['selfmonitor'][1] . " range. However, {$informer_title1} rated the Inhibit scale to be within the " . $ranges['inhibit'][2] . " range and the Self-Monitor scale to be within the " . $ranges['selfmonitor'][2] . ' range. ';
+            }
+
+            $emotional_regulation_index .= "Emotional Regulation Index: The Emotion Regulation Index (ERI) represents a student's ability to regulate emotional responses including responding to changing situations. {$examinee_name}'s overall level of emotional regulation skills were considered ";
+
+            if ( $rawScores['eri'][1] == $rawScores['eri'][2] ) {
+                $emotional_regulation_index .= ' to be within the ' . $ranges['eri'][1] . " range by both {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $emotional_regulation_index .= ' to be within the ' . $ranges['eri'][1] . " range by {$informer_title0} and the " . $ranges['eri'][2] . " range by {$informer_title1}. ";
+            }
+
+            if ( $rawScores['shift'][1] == $rawScores['shift'][2] && $rawScores['emotional_control'][1] == $rawScores['emotional_control'][2] ) {
+                $emotional_regulation_index .= " Specifically, both {$informer_title0} and {$informer_title1} rated {$examinee_name}'s ability to transition (Shift) to be within the " . $ranges['shift'][1] . " range, and ability to regulate {$his_her} emotions (Emotional Control) to be within the " . $ranges['emotional_control'][1] . ' range. ';
+            } else {
+                $emotional_regulation_index .= " Specifically, {$informer_title0} rated {$examinee_name}'s ability to transition (Shift) to be within the " . $ranges['shift'][1] . " range, and ability to regulate {$his_her} emotions to be within the " . $ranges['emotional_control'][1] . " range. However, {$informer_title1} indicated " . $ranges['shift'][2] . ' functioning on the Shift scale and ' . $ranges['emotional_control'][2] . ' functioning on the Emotional Control scale. ';
+            }
+
+            $cognitive_regulation_index .= "Cognitive Regulation Index: The Cognitive Regulation Index (CRI) represents a student's ability to control and manage cognitive processes and problem-solve effectively. {$examinee_name}'s overall CRI ability was rated to be within the ";
+
+            if ( $rawScores['cri'][1] == $rawScores['cri'][2] ) {
+                $cognitive_regulation_index .= $ranges['cri'][1] . " range by {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $cognitive_regulation_index .= $ranges['cri'][1] . " range by {$informer_title0} and within the " . $ranges['cri'][2] . " range by {$informer_title1}. ";
+            }
+
+            if ( $rawScores['initiate'][1] == $rawScores['initiate'][2] && $rawScores['working_memory'][1] == $rawScores['working_memory'][2] ) {
+                $cognitive_regulation_index .= "Specifically, both {$informer_title0} and {$informer_title1} rated {$examinee_name}'s ability to begin an activity or generate ideas (Initiate) to be within the " . $ranges['initiate'][1] . " range and {$his_her} ability to hold information in {$his_her} mind to be within the " . $ranges['working_memory'][1] . ' range. ';
+            } else {
+                $cognitive_regulation_index .= "{$informer_title0} rated {$examinee_name}'s ability to begin an activity or generate ideas (Initiate) to be within the " . $ranges['initiate'][1] . " range and {$his_her} ability to hold information in {$his_her} mind (Working Memory) to be within the " . $ranges['working_memory'][1] . " range. Whereas {$informer_title1} rated the Initiate scale within the " . $ranges['initiate'][2] . " range and the Working Memory scale within the " . $ranges['working_memory'][2] . ' range. ';
+            }
+
+            if ( $rawScores['planorganize'][1] == $rawScores['planorganize'][2] && $rawScores['taskmonitor'][1] == $rawScores['taskmonitor'][2] && $rawScores['organization_of_materials'][1] == $rawScores['organization_of_materials'][2] ) {
+                $cognitive_regulation_index .= " They also both rated {$examinee_name}'s ability to set goals to be within the " . $ranges['planorganize'][1] . " range, ability to check {$his_her} work to be within the " . $ranges['taskmonitor'][1] . " range, and ability to keep {$his_her} work/play area clean and orderly to be within the " . $ranges['organization_of_materials'][1] . ' range.';
+            } else {
+                $cognitive_regulation_index .= " Additionally, {$informer_title0} rated {$examinee_name}'s ability to set goals (Plan/Organize) to be within the " . $ranges['planorganize'][1] . " range, ability to check {$his_her} work (Task-Monitor) to be within the " . $ranges['taskmonitor'][1] . " range, and ability to keep {$his_her} work/play area clean and orderly (Organization of Materials) to be within the " . $ranges['organization_of_materials'][1] . " range. {$informer_title1} indicated " . $ranges['planorganize'][2] . ' functioning for the Plan/Organize scale, ' . $ranges['taskmonitor'][2] . ' functioning for the Task-Monitoring scale, and ' . $ranges['organization_of_materials'][2] . ' functioning for the Organization of Materials scale. ';
+            }
+
+            $brief_2_rating_salses .= "The BRIEF-2 Rating Scales assess a rater's response pattern to determine how results should be interpreted. ";
+            if ( $negOne === 'acceptable' && $incOne === 'acceptable' && $infOne === 'acceptable' ) {
+                $brief_2_rating_salses .= "{$informer_title0}'s Inconsistency, Infrequency, and Negativity Indices were all considered to be acceptable, indicating that these ratings are likely a valid representation of {$examinee_name}'s current behavioral functioning at this time. ";
+            } else {
+                $brief_2_rating_salses .= "{$informer_title0}'s Inconsistency, Infrequency, and Negativity Indices indicated that the results of these ratings should be interpreted with caution. ";
+            }
+
+            if ( $negTwo === $negOne && $infTwo === $infOne && $incTwo === $incOne ) {
+                $brief_2_rating_salses .= ' Likewise, ';
+            } else {
+                $brief_2_rating_salses .= ' Additionally, ';
+            }
+
+            if ( $negTwo === 'acceptable' && $infTwo === 'acceptable' && $incTwo === 'acceptable' ) {
+                $brief_2_rating_salses .= "{$informer_title1}'s Inconsistency, Infrequency, and Negativity indices were considered to be acceptable.";
+            } else {
+                $brief_2_rating_salses .= "{$informer_title1}'s Inconsistency, Infrequency, and Negativity indices indicated that these ratings should be interpreted with caution.";
+            }
+
+            if ( $infOne !== 'acceptable' || $infTwo !== 'acceptable' ) {
+                $brief_2_rating_salses .= ' The Infrequency index identifies when the rater has used a pattern to mark answers (i.e. S,A,N,S,A,N,S,A,N). ';
+            }
+            if ( $incOne !== 'acceptable' || $incTwo !== 'acceptable' ) {
+                $brief_2_rating_salses .= ' The Inconsistency index identifies situations when the rater has given inconsistent responses to items that are typically answered in a similar way. ';
+            }
+        } else {
+            // 3 or more raters
+            $executiveFunctioning .= "Executive functions are a collection of processes that are responsible for guiding, directing, and managing cognitive, emotional, and behavioral functions, particularly during active, novel problem solving. In order to obtain information regarding {$examinee_name}'s executive functioning at school and at home, the Behavior Rating Inventory of Executive Function, Second Edition (BRIEF-2) was completed by {$his_her} {$infor_dropbox1}, {$informer_title0}, {$infor_dropbox2}, {$informer_title1} and {$infor_dropbox3}, {$informer_title2}. The BRIEF-2 is designed for individuals ages 5 to 18 for whom there may be a concern about self-regulation. BRIEF-2 T-scores have a mean of 50 and a standard deviation of 10. BRIEF-2 scores 60-64 are considered mildly elevated, scores 65-69 are considered potentially clinically elevated and scores of 70 and above are typically considered clinically elevated or clinically significant. {$examinee_name_2}'s functioning was assessed through three broad Composites: Behavior Regulation, Emotion Regulation, and Cognitive Regulation. The BRIEF-2 also provides a Global Executive Composite (GEC) score that serves as an overall estimate of executive functioning. {$examinee_name_2}'s GEC was within the ";
+
+            if ( $rawScores['gec'][1] == $rawScores['gec'][2] ) {
+                $executiveFunctioning .= $ranges['gec'][1] . " range by both {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $executiveFunctioning .= $ranges['gec'][1] . " range by {$informer_title0} and within the " . $ranges['gec'][2] . " range by {$his_her} {$informer_title1}.";
+            }
+            $executiveFunctioning .= " Additionally, {$informer_title2} rated {$examinee_name}'s overall level of executive functioning to be within the " . $ranges['gec'][3] . ' range.';
+
+            $behavioral_regulation_index .= "Behavior Regulation Index: This composite represents a student's ability to regulate and monitor behavior effectively. {$examinee_name_2}'s overall level of behavior regulation problems was rated to be in the ";
+
+            if ( $rawScores['bri'][1] == $rawScores['bri'][2] ) {
+                $behavioral_regulation_index .= $ranges['bri'][1] . " range by {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $behavioral_regulation_index .= $ranges['bri'][1] . " range by {$informer_title0} and within the " . $ranges['bri'][2] . " range by {$informer_title1}.";
+            }
+
+            if ( $rawScores['inhibit'][1] == $rawScores['inhibit'][2] && $rawScores['selfmonitor'][1] == $rawScores['selfmonitor'][2] ) {
+                $behavioral_regulation_index .= " Specifically, {$informer_title0} and {$informer_title1} rated {$examinee_name}'s ability to control {$his_her} impulses (inhibit) within the " . $ranges['inhibit'][1] . " range, and {$his_her} ability to self-monitor to be in the " . $ranges['selfmonitor'][1] . ' range. ';
+            } else {
+                $behavioral_regulation_index .= " Specifically, {$informer_title0} rated {$examinee_name}'s ability to control {$his_her} impulses (inhibit) within the " . $ranges['inhibit'][1] . " range, and {$his_her} ability to self-monitor in the " . $ranges['selfmonitor'][1] . " range. However, {$informer_title1} rated the Inhibit scale to be within the " . $ranges['inhibit'][2] . " range and the Self-Monitor scale to be within the " . $ranges['selfmonitor'][2] . ' range. ';
+            }
+
+            if ( $ranges['inhibit'][3] !== 'average' || $ranges['selfmonitor'][3] !== 'average' ) {
+                $behavioral_regulation_index .= " Additionally, {$informer_title2} rated the Inhibit scale in the " . $ranges['inhibit'][3] . ' range and the Self-Monitor scale in the ' . $ranges['selfmonitor'][3] . ' range.';
+            }
+
+            $emotional_regulation_index .= "Emotional Regulation Index: The Emotion Regulation Index (ERI) represents a student's ability to regulate emotional responses including responding to changing situations. {$examinee_name_2}'s overall level of emotional regulation skills were considered ";
+
+            if ( $rawScores['eri'][1] == $rawScores['eri'][2] ) {
+                $emotional_regulation_index .= ' to be within the ' . $ranges['eri'][1] . " range by both {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $emotional_regulation_index .= ' to be within the ' . $ranges['eri'][1] . " range by {$informer_title0} and the " . $ranges['eri'][2] . " range by {$informer_title1}. ";
+            }
+
+            if ( $rawScores['shift'][1] == $rawScores['shift'][2] && $rawScores['emotional_control'][1] == $rawScores['emotional_control'][2] ) {
+                $emotional_regulation_index .= " Specifically, both {$informer_title0} and {$informer_title1} rated {$examinee_name}'s ability to transition (Shift) to be within the " . $ranges['shift'][1] . " range, and ability to regulate {$his_her} emotions (Emotional Control) to be within the " . $ranges['emotional_control'][1] . ' range. ';
+            } else {
+                $emotional_regulation_index .= " Specifically, {$informer_title0} rated {$examinee_name}'s ability to transition (Shift) to be within the " . $ranges['shift'][1] . " range, and ability to regulate {$his_her} emotions to be within the " . $ranges['emotional_control'][1] . " range. However, {$informer_title1} indicated " . $ranges['shift'][2] . ' functioning on the Shift scale and ' . $ranges['emotional_control'][2] . ' functioning on the Emotional Control scale. ';
+            }
+
+            if ( $ranges['shift'][3] !== 'average' || $ranges['emotional_control'][3] !== 'average' ) {
+                $emotional_regulation_index .= " Additionally, {$informer_title2} rated the Shift scale to be within the " . $ranges['shift'][3] . ' range and the Emotional Control Scale within the ' . $ranges['emotional_control'][3] . ' range. ';
+            }
+
+            $cognitive_regulation_index .= "Cognitive Regulation Index: The Cognitive Regulation Index (CRI) represents a student's ability to control and manage cognitive processes and problem-solve effectively. {$examinee_name_2}'s overall CRI ability was rated to be within the ";
+
+            if ( $rawScores['cri'][1] == $rawScores['cri'][2] ) {
+                $cognitive_regulation_index .= $ranges['cri'][1] . " range by {$informer_title0} and {$informer_title1}. ";
+            } else {
+                $cognitive_regulation_index .= $ranges['cri'][1] . " range by {$informer_title0} and within the " . $ranges['cri'][2] . " range by {$informer_title1}. ";
+            }
+
+            if ( $rawScores['initiate'][1] == $rawScores['initiate'][2] && $rawScores['working_memory'][1] == $rawScores['working_memory'][2] ) {
+                $cognitive_regulation_index .= "Specifically, both {$informer_title0} and {$informer_title1} rated {$examinee_name}'s ability to begin an activity or generate ideas (Initiate) to be within the " . $ranges['initiate'][1] . " range and {$his_her} ability to hold information in {$his_her} mind to be within the " . $ranges['working_memory'][1] . ' range. ';
+            } else {
+                $cognitive_regulation_index .= "{$informer_title0} rated {$examinee_name}'s ability to begin an activity or generate ideas (Initiate) to be within the " . $ranges['initiate'][1] . " range and {$his_her} ability to hold information in {$his_her} mind (Working Memory) to be within the " . $ranges['working_memory'][1] . " range. Whereas {$informer_title1} rated the Initiate scale within the " . $ranges['initiate'][2] . " range and the Working Memory scale within the " . $ranges['working_memory'][2] . ' range. ';
+            }
+
+            if ( $ranges['initiate'][3] !== 'average' || $ranges['working_memory'][3] !== 'average' ) {
+                $cognitive_regulation_index .= " Additionally, {$informer_title2} rated the Initiate scale within the " . $ranges['initiate'][3] . ' range and the Working Memory scale within the ' . $ranges['working_memory'][3] . ' range. ';
+            }
+
+            if ( $rawScores['planorganize'][1] == $rawScores['planorganize'][2] && $rawScores['taskmonitor'][1] == $rawScores['taskmonitor'][2] && $rawScores['organization_of_materials'][1] == $rawScores['organization_of_materials'][2] ) {
+                $cognitive_regulation_index .= " They also both rated {$examinee_name}'s ability to set goals to be within the " . $ranges['planorganize'][1] . " range, ability to check {$his_her} work to be within the " . $ranges['taskmonitor'][1] . " range, and ability to keep {$his_her} work/play area clean and orderly to be within the " . $ranges['organization_of_materials'][1] . ' range.';
+            } else {
+                $cognitive_regulation_index .= " Additionally, {$informer_title0} rated {$examinee_name}'s ability to set goals (Plan/Organize) to be within the " . $ranges['planorganize'][1] . " range, ability to check {$his_her} work (Task-Monitor) to be within the " . $ranges['taskmonitor'][1] . " range, and ability to keep {$his_her} work/play area clean and orderly (Organization of Materials) to be within the " . $ranges['organization_of_materials'][1] . " range. {$informer_title1} indicated " . $ranges['planorganize'][2] . ' functioning for the Plan/Organize scale, ' . $ranges['taskmonitor'][2] . ' functioning for the Task-Monitoring scale, and ' . $ranges['organization_of_materials'][2] . ' functioning for the Organization of Materials scale. ';
+            }
+
+            if ( $ranges['planorganize'][3] !== 'average' || $ranges['taskmonitor'][3] !== 'average' || $ranges['organization_of_materials'][3] !== 'average' ) {
+                $cognitive_regulation_index .= " Furthermore, {$informer_title2} reported " . $ranges['planorganize'][3] . ' functioning for the Plan/Organize scale, ' . $ranges['taskmonitor'][3] . ' functioning for the Task-Monitoring scale, and ' . $ranges['organization_of_materials'][3] . ' functioning for the Organization of Materials scale. ';
+            }
+
+            // Validity scales
+            $brief_2_rating_salses .= "The BRIEF-2 Rating Scales assess a rater's response pattern to determine how results should be interpreted. ";
+            if ( $negOne === 'acceptable' && $incOne === 'acceptable' && $infOne === 'acceptable' ) {
+                $brief_2_rating_salses .= "{$informer_title0}'s Inconsistency, Infrequency, and Negativity indices were all considered to be acceptable, indicating that these ratings are likely a valid representation of {$examinee_name}'s current behavioral functioning at this time. ";
+            } else {
+                $brief_2_rating_salses .= "While {$informer_title0}'s ratings were considered acceptable for appropriate frequency and consistency, the Negativity scale indicates responses that were excessively negative, and the validity of these scores was in the {$negOne} range.";
+            }
+
+            if ( $negTwo === $negOne && $infTwo === $infOne && $incTwo === $incOne ) {
+                $brief_2_rating_salses .= ' Likewise, ';
+            } else {
+                $brief_2_rating_salses .= ' Additionally, ';
+            }
+
+            if ( $negTwo === 'acceptable' && $infTwo === 'acceptable' && $incTwo === 'acceptable' ) {
+                $brief_2_rating_salses .= "{$informer_title1}'s Inconsistency, Infrequency, and Negativity indices were considered to be acceptable. ";
+            }
+
+            if ( $negThree === 'acceptable' && $incThree === 'acceptable' && $infThree === 'acceptable' ) {
+                $brief_2_rating_salses .= "Moreover, {$informer_title2}'s response pattern was considered to portray a valid representation of {$examinee_name}'s current behavioral/executive functioning at this time.";
+            } else {
+                $brief_2_rating_salses .= "Moreover, {$informer_title2}'s response pattern was NOT considered to portray a valid representation of {$examinee_name}'s current behavioral/executive functioning at this time; therefore {$informer_title2}'s scores should be interpreted with caution.";
+            }
+
+            if ( $infOne !== 'acceptable' || $infTwo !== 'acceptable' || $infThree !== 'acceptable' ) {
+                $brief_2_rating_salses .= ' The Infrequency index identifies when the rater has used a pattern to mark answers (i.e. S,A,N,S,A,N,S,A,N). ';
+            }
+            if ( $incOne !== 'acceptable' || $incTwo !== 'acceptable' || $incThree !== 'acceptable' ) {
+                $brief_2_rating_salses .= ' The Inconsistency index identifies situations when the rater has given inconsistent responses to items that are typically answered in a similar way. ';
+            }
+        }
+
+        $html  = "<p class='executiveFunctioning-header'><strong>Executive Functioning</strong></p>";
+        $html .= "<p class='executiveFunctioning'>" . trim( $executiveFunctioning ) . '</p>';
+        $html .= "<p class='behavioral_regulation_index'>" . trim( $behavioral_regulation_index ) . '</p>';
+        $html .= "<p class='emotional_regulation_index'>" . trim( $emotional_regulation_index ) . '</p>';
+        $html .= "<p class='cognitive_regulation_index'>" . trim( $cognitive_regulation_index ) . '</p>';
+        $html .= "<p class='brief_2_rating_salses'>" . trim( $brief_2_rating_salses ) . '</p>';
 
         return [
             'examinee'         => $context['examinee_name'],

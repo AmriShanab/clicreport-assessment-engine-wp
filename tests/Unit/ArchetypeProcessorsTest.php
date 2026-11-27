@@ -146,6 +146,11 @@ final class ArchetypeProcessorsTest {
             CraeAssert::true( array_key_exists( 'gec', $output['scores_evaluated'] ), 'BRIEF-2 evaluates gec from global_executive_composite_gec_1' );
             CraeAssert::same( 68.0, (float) $output['scores_evaluated']['initiate']['raters'][1]['score'], 'Initiate score correctly extracted' );
             CraeAssert::same( 67.0, (float) $output['scores_evaluated']['gec']['raters'][1]['score'], 'GEC score correctly extracted' );
+            CraeAssert::contains( 'Executive Functioning', $output['narrative_html'], 'BRIEF-2 includes Executive Functioning header' );
+            CraeAssert::contains( 'Behavior Regulation Index:', $output['narrative_html'], 'BRIEF-2 includes Behavior Regulation Index synthesis' );
+            CraeAssert::contains( 'Emotional Regulation Index:', $output['narrative_html'], 'BRIEF-2 includes Emotional Regulation Index synthesis' );
+            CraeAssert::contains( 'Cognitive Regulation Index:', $output['narrative_html'], 'BRIEF-2 includes Cognitive Regulation Index synthesis' );
+            CraeAssert::contains( 'The BRIEF-2 Rating Scales assess a rater\'s response pattern', $output['narrative_html'], 'BRIEF-2 includes validity scales interpretation' );
         }
     }
 }

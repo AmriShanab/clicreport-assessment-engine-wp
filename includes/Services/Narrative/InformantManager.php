@@ -60,10 +60,10 @@ final class InformantManager {
         if ( ! empty( $data['active_raters'] ) && is_numeric( $data['active_raters'] ) ) {
             return max( 1, min( 5, (int) $data['active_raters'] ) );
         }
-        if ( ! empty( $data['3'] ) || ! empty( $data['rater_checkbox_3'] ) ) { return 5; }
-        if ( ! empty( $data['2'] ) || ! empty( $data['rater_checkbox_2'] ) ) { return 4; }
-        if ( ! empty( $data['1'] ) || ! empty( $data['rater_checkbox_1'] ) ) { return 3; }
-        if ( ! empty( $data['0'] ) || ! empty( $data['rater_checkbox_0'] ) || ! empty( $data['informant_two'] ) ) { return 2; }
+        if ( ! empty( $data['3'] ) || ! empty( $data['rater_checkbox_3'] ) || ! empty( $data['informant_five'] ) || ! empty( $data['informant_5'] ) ) { return 5; }
+        if ( ! empty( $data['2'] ) || ! empty( $data['rater_checkbox_2'] ) || ! empty( $data['informant_four'] ) || ! empty( $data['informant_4'] ) ) { return 4; }
+        if ( ! empty( $data['1'] ) || ! empty( $data['rater_checkbox_1'] ) || ! empty( $data['informant_three'] ) || ! empty( $data['informant_3'] ) ) { return 3; }
+        if ( ! empty( $data['0'] ) || ! empty( $data['rater_checkbox_0'] ) || ! empty( $data['informant_two'] ) || ! empty( $data['informant_2'] ) ) { return 2; }
         return 1;
     }
 
