@@ -78,6 +78,18 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
         $config        = ! empty($templateRow['config_json']) ? (json_decode((string) $templateRow['config_json'], true) ?: []) : [];
         $bellCurveSvc  = new BellCurveService();
         $hasBellCurve  = $bellCurveSvc->isSupported($slug, 'dual_standard_scaled', $config);
+
+        if ('report-wisc-v' === $slug) {
+            return $this->processWisc5Extended(
+                $templateRow,
+                $scales,
+                $inputData,
+                $context,
+                $bellCurveSvc,
+                $hasBellCurve,
+                $config
+            );
+        }
         $bellCurveBars = [];
 
         foreach ($composites as $comp) {
@@ -422,5 +434,199 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
         }
 
         return null;
+    }
+
+    /**
+     * Dedicated clinical processor for WISC-V generating the exact 6-paragraph CHC neuropsychological model.
+     */
+    private function processWisc5Extended(
+        array $templateRow,
+        array $scales,
+        array $inputData,
+        array $context,
+        BellCurveService $bellCurveSvc,
+        bool $hasBellCurve,
+        array $config
+    ): array {
+        $name     = ! empty( $context['name'] ) ? esc_html( $context['name'] ) : 'The examinee';
+        $possName = ! empty( $context['possessive_name'] ) ? esc_html( $context['possessive_name'] ) : "The examinee's";
+        $his_her  = ! empty( $context['possessive'] ) ? esc_html( $context['possessive'] ) : 'his';
+        $he_she   = ! empty( $context['pronoun'] ) ? esc_html( $context['pronoun'] ) : 'he';
+        $him_her  = ! empty( $context['objective'] ) ? esc_html( $context['objective'] ) : 'him';
+
+        // Extract scores for FSIQ and indices
+        $fsiqVal = $this->extractScoreValue( $inputData, 'full_scale_iq' );
+        if ( null === $fsiqVal ) {
+            $fsiqVal = $this->extractScoreValue( $inputData, 'fsiq' );
+        }
+        $vciVal = $this->extractScoreValue( $inputData, 'verbal_comprehension' );
+        if ( null === $vciVal ) {
+            $vciVal = $this->extractScoreValue( $inputData, 'vci' );
+        }
+        $vsiVal = $this->extractScoreValue( $inputData, 'visual_spatial' );
+        if ( null === $vsiVal ) {
+            $vsiVal = $this->extractScoreValue( $inputData, 'vsi' );
+        }
+        $friVal = $this->extractScoreValue( $inputData, 'fluid_reasoning' );
+        if ( null === $friVal ) {
+            $friVal = $this->extractScoreValue( $inputData, 'fri' );
+        }
+        $wmiVal = $this->extractScoreValue( $inputData, 'working_memory' );
+        if ( null === $wmiVal ) {
+            $wmiVal = $this->extractScoreValue( $inputData, 'wmi' );
+        }
+        $psiVal = $this->extractScoreValue( $inputData, 'processing_speed' );
+        if ( null === $psiVal ) {
+            $psiVal = $this->extractScoreValue( $inputData, 'psi' );
+        }
+
+        // Subtests (Scaled Scores)
+        $simVal = $this->extractScoreValue( $inputData, 'similarities' );
+        $vocVal = $this->extractScoreValue( $inputData, 'vocabulary' );
+        $bdVal  = $this->extractScoreValue( $inputData, 'block_design' );
+        $vpVal  = $this->extractScoreValue( $inputData, 'visual_puzzles' );
+        $mrVal  = $this->extractScoreValue( $inputData, 'matrix_reasoning' );
+        $fwVal  = $this->extractScoreValue( $inputData, 'figure_weights' );
+        $dsVal  = $this->extractScoreValue( $inputData, 'digit_span' );
+        $psVal  = $this->extractScoreValue( $inputData, 'picture_span' );
+        $cdVal  = $this->extractScoreValue( $inputData, 'coding' );
+        $ssVal  = $this->extractScoreValue( $inputData, 'symbol_search' );
+
+        $fsiqCl = AssessmentScorer::classifyStandardScore( $fsiqVal );
+        $vciCl  = AssessmentScorer::classifyStandardScore( $vciVal );
+        $vsiCl  = AssessmentScorer::classifyStandardScore( $vsiVal );
+        $friCl  = AssessmentScorer::classifyStandardScore( $friVal );
+        $wmiCl  = AssessmentScorer::classifyStandardScore( $wmiVal );
+        $psiCl  = AssessmentScorer::classifyStandardScore( $psiVal );
+
+        $simCl = AssessmentScorer::classifyScaledScore( $simVal );
+        $vocCl = AssessmentScorer::classifyScaledScore( $vocVal );
+        $bdCl  = AssessmentScorer::classifyScaledScore( $bdVal );
+        $vpCl  = AssessmentScorer::classifyScaledScore( $vpVal );
+        $mrCl  = AssessmentScorer::classifyScaledScore( $mrVal );
+        $fwCl  = AssessmentScorer::classifyScaledScore( $fwVal );
+        $dsCl  = AssessmentScorer::classifyScaledScore( $dsVal );
+        $psCl  = AssessmentScorer::classifyScaledScore( $psVal );
+        $cdCl  = AssessmentScorer::classifyScaledScore( $cdVal );
+        $ssCl  = AssessmentScorer::classifyScaledScore( $ssVal );
+
+        // Dynamic facilitation / impact phrase based on composite score
+        $getImpactPhrase = function( $cl, $his_her ) {
+            $score = (float) ( $cl['score'] ?? 100 );
+            if ( $score >= 90 ) {
+                return "which suggests that these skills facilitate {$his_her} learning and performance.";
+            }
+            if ( $score >= 80 ) {
+                return "which suggests that these skills may occasionally pose vulnerabilities for {$his_her} learning and performance.";
+            }
+            return "which suggests that these difficulties significantly impact {$his_her} classroom learning and performance.";
+        };
+
+        $getSentImpact = function( $cl, $his_her ) {
+            $score = (float) ( $cl['score'] ?? 100 );
+            if ( $score >= 90 ) {
+                return "His performance on the measures suggests that these skills facilitate {$his_her} learning and performance.";
+            }
+            if ( $score >= 80 ) {
+                return "His performance suggests that these skills may occasionally present challenges in learning.";
+            }
+            return "His performance suggests that weaknesses in this area significantly hinder learning efficiency.";
+        };
+
+        // Paragraph 1: Overall Cognitive Processing Ability
+        $p1 = "<p class=''>Overall Cognitive Processing Ability: The Wechsler Intelligence Scale for Children, Fifth Edition (WISC-V) was administered for the cognitive assessment. The WISC-V is a standardized measure of cognitive development for children between the ages of six and sixteen that places a strong emphasis on child-friendly, developmentally appropriate features and tasks. The WISC-V is an individually administered assessment that reports scores as Standard Scores (SS) with a mean (average) of 100 and standard deviation of 15, with most people scoring between 85 and 115. Cognitive, or mental, processes are foundational skills used in the act of thinking, remembering, and learning. These processes, along with other abilities and traits, combine to form an individual's general intellectual ability. Tests administered in the school environment do not capture every aspect of intelligence; however, these tests are useful in predicting how intense instruction needs to be in order for the individual to master academic content. {$possName} overall performance on the school-based measure of cognitive processing abilities falls within the {$fsiqCl['range']} range (SS= {$fsiqCl['score']}; PR= {$fsiqCl['percentile']}).</p>";
+
+        // Paragraph 2: Verbal Comprehension (Gc)
+        $vciImpact = $getImpactPhrase( $vciCl, $his_her );
+        $p2 = "<p class=''>Verbal Comprehension (Gc): Verbal comprehension refers to an individual's knowledge base (or general fund of information) that has built up over time, beginning in infancy. It is like your own personal library of everything you know. Verbal Comprehension involves knowledge of one's culture (e.g., who is the President of the United States?) as well as verbal- or language-based knowledge that has been developed during general life experiences and formal schooling (e.g., understanding words and their meaning, understanding street signs, acquiring developmentally appropriate knowledge of current events and history). Having well developed Verbal Comprehension skills means that one understands and uses language well, has an average or better vocabulary, has good listening skills, and is able to use language well via verbal expression. For the Similarities subtest, two words were read to {$name} and {$he_she} was asked to describe how they were similar (SS= {$simCl['score']}). Additionally, on the Vocabulary subtest {$name} was asked to either name depicted items shown to {$him_her} or define words that were orally presented (SS= {$vocCl['score']}). {$possName} overall performance on the measures of Verbal Comprehension fell within the {$vciCl['range']} range (SS= {$vciCl['score']}; PR= {$vciCl['percentile']}), {$vciImpact}</p>";
+
+        // Paragraph 3: Visual Processing (Gv)
+        $vsiScore = (float) ( $vsiCl['score'] ?? 100 );
+        $vsiSent = ( $vsiScore >= 90 ) ? "His performance on the Visual Processing tasks suggests that these skills facilitate {$his_her} learning and performance." : "His performance on the Visual Processing tasks suggests that difficulties in visual-spatial processing may impact classroom performance.";
+        $p3 = "<p class=''>Visual Processing (Gv): Visual Processing, or visual spatial processing, refers to an individual's ability to think about visual patterns (e.g., what is the shortest route from your house to school?) and visual images (e.g., what would this shape look like if I turned it upside down?). This type of ability also involves generating, perceiving, and analyzing visual patterns and visual information (e.g., which three shapes go together to make this shape?). Additional examples of this type of ability include putting puzzles together, completing a maze (such as the ones often seen on children's menus in restaurants), and interpreting a graph or chart. For the Block Design subtest, {$name} was given blocks and shown a model and/or picture and asked to recreate the design shown (SS= {$bdCl['score']}). For the Visual Puzzles subtest, {$name} was asked to view a completed puzzle and select three response options that, when combined, reconstruct the puzzle (SS= {$vpCl['score']}). {$possName} overall performance on the measures of Visual Processing fell within the {$vsiCl['range']} range (SS= {$vsiCl['score']}; PR= {$vsiCl['percentile']}). {$vsiSent}</p>";
+
+        // Paragraph 4: Fluid Reasoning (Gf)
+        $friScore = (float) ( $friCl['score'] ?? 100 );
+        $friSent = ( $friScore >= 90 ) ? "His performance on the Fluid Reasoning tasks suggests that these skills facilitate {$his_her} learning and performance." : "His performance on the Fluid Reasoning tasks suggests that novel reasoning difficulties may impact complex problem-solving in class.";
+        $p4 = "<p class=''>Fluid Reasoning (Gf): Fluid Reasoning refers to the type of thinking that an individual may use when faced with a relatively new task that cannot be performed automatically (e.g., by relying on previously learned habits or scripts). It includes such tasks as forming and recognizing concepts (e.g., how are a dog, cat, and cow alike?), identifying and perceiving relationships (e.g., sun is to morning as moon is to night), drawing inferences (e.g., after reading a story, answering the question- What will John do next?), and/or reorganizing or transforming information (e.g., selecting one of several pictures to complete a puzzle/pattern). Overall, this ability can be thought of as a problem-solving type of intelligence. Fluid reasoning/problem solving skills are important for reading comprehension (e.g., making inferences from text), math (e.g., figuring out how to set up a math problem by using information provided in a word problem), and writing (e.g., writing a persuasive essay). For the Matrix Reasoning subtest, {$name} viewed an incomplete matrix or series and was asked to select the response option that completed the matrix or series (SS= {$mrCl['score']}). For the Figure Weights subtest, under the constraint of time, {$name} was shown a scale with missing weight(s) and asked to select the response option that would keep the scale balanced (SS= {$fwCl['score']}). {$possName} overall performance on the measures of Fluid Reasoning fell within the {$friCl['range']} range (SS= {$friCl['score']}; PR= {$friCl['percentile']}). {$friSent}</p>";
+
+        // Paragraph 5: Working Memory (Gsm)
+        $wmiScore = (float) ( $wmiCl['score'] ?? 100 );
+        $wmiSent = ( $wmiScore >= 90 ) ? "His performance on the Working Memory tasks suggests that these skills facilitate {$his_her} learning and performance." : "His performance on the Working Memory tasks suggests that limitations in working memory may impact multi-step classroom instructions.";
+        $p5 = "<p class=''>Working Memory (Gsm): Working memory is the ability to hold information in one's mind and then use it within a few seconds. The most common example of working memory is holding a phone number in one's mind long enough to dial it. Working memory is also a part of the short-term memory system and involves manipulating or transforming information and using it in some way (e.g., saying the months of the year backwards or doing mental math). Working Memory skills are important for reading, writing, and math. For the Digit Span subtest, {$name} was read a sequence of numbers and asked to recall the numbers in the same order, reverse order, and ascending order (SS= {$dsCl['score']}). For the Picture Span subtest, {$he_she} was shown a stimulus page with one or more pictures of nameable objects for a specified time and then asked to select the picture(s) from options on a response page (SS= {$psCl['score']}). {$possName} overall performance on the Working Memory measures fell within the {$wmiCl['range']} range (SS= {$wmiCl['score']}; PR= {$wmiCl['percentile']}). {$wmiSent}</p>";
+
+        // Paragraph 6: Processing Speed (Gs)
+        $psiScore = (float) ( $psiCl['score'] ?? 100 );
+        $psiSent = ( $psiScore >= 90 ) ? "His performance on the Processing Speed tasks suggests that these skills facilitate {$his_her} learning and performance." : "His performance on the Processing Speed tasks suggests that slower processing speed may reduce efficiency on timed tasks.";
+        $p6 = "<p class=''>Processing Speed (Gs): Processing Speed involves the ability to fluently perform simple clerical-type tasks, especially when under pressure to maintain focused attention and concentration. It can also be thought of as how quickly one can think or how quickly one can take simple tests that require simple decisions (e.g., math calculation fluency). Faster processing of information can help conserve working memory resources. On the other hand, impairment in this area reduces a person's efficiency in performing all types of mental operations causing them to respond more slowly to classroom tasks. For the Coding subtest, {$name} worked within a specified time limit and used a key to copy symbols that corresponded with simple geometric shapes or numbers (SS= {$cdCl['score']}). For the Symbol Search subtest, {$he_she} scanned search groups and indicated whether target symbols were present (SS= {$ssCl['score']}). {$possName} overall performance on the measures of Processing Speed fell within the {$psiCl['range']} range (SS= {$psiCl['score']}; PR= {$psiCl['percentile']}). {$psiSent}</p>";
+
+        $narrativeHtml = $p1 . $p2 . $p3 . $p4 . $p5 . $p6;
+
+        // Narrative Summary
+        $narrativeSummaryHtml = "<p><u><b>Narrative Summary</b></u></p><p>Based on cognitive assessment results, {$possName} full scale IQ falls within the {$fsiqCl['range']} range. More specifically, {$he_she} obtained a score within the {$vciCl['range']} range for measures of Verbal Comprehension, within the {$vsiCl['range']} range for measures of Visual Spatial abilities, within the {$friCl['range']} range on measures of Fluid Reasoning, within the {$wmiCl['range']} range for measures of Working Memory, and within the {$psiCl['range']} range on measures of Processing Speed.</p>";
+
+        // Performance Summary
+        $performanceSummaryHtml = "<p><u><b>Performance Summary</b></u></p><p>Performance Summary:<br><br>\nFull Scale IQ: SS={$fsiqCl['score']}; PR= {$fsiqCl['percentile']} &nbsp;&nbsp;{$fsiqCl['range']} <br>\nVerbal Comprehension: SS={$vciCl['score']}; PR= {$vciCl['percentile']} &nbsp;&nbsp;{$vciCl['range']} <br>\nVisual Spatial: SS={$vsiCl['score']}; PR= {$vsiCl['percentile']} &nbsp;&nbsp;{$vsiCl['range']} <br>\nFluid Reasoning: SS={$friCl['score']}; PR= {$friCl['percentile']} &nbsp;&nbsp;{$friCl['range']} <br>\nWorking Memory: SS={$wmiCl['score']}; PR= {$wmiCl['percentile']} &nbsp;&nbsp;{$wmiCl['range']} <br>\nProcessing Speed: SS={$psiCl['score']}; PR= {$psiCl['percentile']} &nbsp;&nbsp;{$psiCl['range']}</p>";
+
+        // Build scoresEvaluated map for UI
+        $scoresEvaluated = [
+            'fsiq'                 => $fsiqCl,
+            'full_scale_iq'        => $fsiqCl,
+            'vci'                  => $vciCl,
+            'verbal_comprehension' => $vciCl,
+            'similarities'         => $simCl,
+            'vocabulary'           => $vocCl,
+            'vsi'                  => $vsiCl,
+            'visual_spatial'       => $vsiCl,
+            'block_design'         => $bdCl,
+            'visual_puzzles'       => $vpCl,
+            'fri'                  => $friCl,
+            'fluid_reasoning'      => $friCl,
+            'matrix_reasoning'     => $mrCl,
+            'figure_weights'       => $fwCl,
+            'wmi'                  => $wmiCl,
+            'working_memory'       => $wmiCl,
+            'digit_span'           => $dsCl,
+            'picture_span'         => $psCl,
+            'psi'                  => $psiCl,
+            'processing_speed'     => $psiCl,
+            'coding'               => $cdCl,
+            'symbol_search'        => $ssCl,
+        ];
+
+        $result = [
+            'examinee'                 => $context['examinee_name'],
+            'pronouns'                 => $context,
+            'scores_evaluated'         => $scoresEvaluated,
+            'narrative_html'           => $narrativeHtml,
+            'narrative_summary_html'   => $narrativeSummaryHtml,
+            'performance_summary_html' => $performanceSummaryHtml,
+        ];
+
+        if ( $hasBellCurve ) {
+            $tplName = (string) ( $templateRow['template_name'] ?? 'WISC-V' );
+            $bars = [];
+            $bellCurveScales = [
+                'full_scale_iq'        => 'Full Scale IQ',
+                'processing_speed'     => 'Processing Speed',
+                'working_memory'       => 'Working Memory',
+                'fluid_reasoning'      => 'Fluid Reasoning',
+                'visual_spatial'       => 'Visual Spatial',
+                'verbal_comprehension' => 'Verbal Comprehension',
+            ];
+            foreach ( $bellCurveScales as $bKey => $bLabel ) {
+                $val = $scoresEvaluated[ $bKey ]['score'] ?? null;
+                if ( null !== $val && is_numeric( $val ) ) {
+                    $metrics = $bellCurveSvc->computeMetrics( (float) $val, 'standard_score' );
+                    $bars[]  = array_merge( [ 'key' => $bKey, 'label' => $bLabel ], $metrics );
+                }
+            }
+            if ( ! empty( $bars ) ) {
+                $result['bell_curve']      = true;
+                $result['bell_curve_html'] = $bellCurveSvc->generateHtml( $tplName, $bars );
+            }
+        }
+
+        return $result;
     }
 }
