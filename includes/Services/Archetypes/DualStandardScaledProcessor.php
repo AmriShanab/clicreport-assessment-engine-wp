@@ -90,6 +90,18 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
                 $config
             );
         }
+
+        if ('report-celf-5' === $slug || 'report-celf-5-page' === $slug) {
+            return $this->processCelf5Extended(
+                $templateRow,
+                $scales,
+                $inputData,
+                $context,
+                $bellCurveSvc,
+                $hasBellCurve,
+                $config
+            );
+        }
         $bellCurveBars = [];
 
         foreach ($composites as $comp) {
@@ -613,6 +625,234 @@ final class DualStandardScaledProcessor implements ArchetypeProcessorInterface
                 'fluid_reasoning'      => 'Fluid Reasoning',
                 'visual_spatial'       => 'Visual Spatial',
                 'verbal_comprehension' => 'Verbal Comprehension',
+            ];
+            foreach ( $bellCurveScales as $bKey => $bLabel ) {
+                $val = $scoresEvaluated[ $bKey ]['score'] ?? null;
+                if ( null !== $val && is_numeric( $val ) ) {
+                    $metrics = $bellCurveSvc->computeMetrics( (float) $val, 'standard_score' );
+                    $bars[]  = array_merge( [ 'key' => $bKey, 'label' => $bLabel ], $metrics );
+                }
+            }
+            if ( ! empty( $bars ) ) {
+                $result['bell_curve']      = true;
+                $result['bell_curve_html'] = $bellCurveSvc->generateHtml( $tplName, $bars );
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Process CELF-5 Extended Clinical Narrative
+     */
+    private function processCelf5Extended(
+        array $templateRow,
+        array $scales,
+        array $inputData,
+        array $context,
+        BellCurveService $bellCurveSvc,
+        bool $hasBellCurve,
+        array $config
+    ): array {
+        $name     = ! empty( $context['name'] ) ? esc_html( $context['name'] ) : 'The examinee';
+        $possName = ! empty( $context['possessive_name'] ) ? esc_html( $context['possessive_name'] ) : "The examinee's";
+        $his_her  = ! empty( $context['possessive'] ) ? esc_html( $context['possessive'] ) : 'his';
+        $he_she   = ! empty( $context['pronoun'] ) ? esc_html( $context['pronoun'] ) : 'he';
+        $him_her  = ! empty( $context['objective'] ) ? esc_html( $context['objective'] ) : 'him';
+
+        // Checkbox exclusions (if checked in the frontend, the section is deleted/suppressed)
+        $excludeCoreLanguage     = !empty($inputData['core_language_score_index']) || !empty($inputData['exclude_core_language']);
+        $excludeExpressive       = !empty($inputData['show_expressive_language_index']) || !empty($inputData['exclude_expressive']);
+        $excludeLanguageStructure = !empty($inputData['show_language_structure_index']) || !empty($inputData['exclude_language_structure']);
+        $excludeReceptive        = !empty($inputData['show_receptive_language_index']) || !empty($inputData['exclude_receptive']);
+        $excludeLanguageContent  = !empty($inputData['show_language_content_index']) || !empty($inputData['exclude_language_content']);
+
+        // Indices
+        $coreScoreVal = $this->extractScoreValue($inputData, 'core_language_score');
+        $repScoreVal  = $this->extractScoreValue($inputData, 'receptive_language_index');
+        $expScoreVal  = $this->extractScoreValue($inputData, 'expressive_language_index');
+        $cntScoreVal  = $this->extractScoreValue($inputData, 'language_content_index');
+        $strScoreVal  = $this->extractScoreValue($inputData, 'language_structure_index');
+
+        // Subtests (Receptive & Content)
+        $scVal  = $this->extractScoreValue($inputData, 'sentence_comprehension');
+        $wcVal  = $this->extractScoreValue($inputData, 'word_classes');
+        $fdVal  = $this->extractScoreValue($inputData, 'following_directions');
+        $lcVal  = $this->extractScoreValue($inputData, 'linguistic_concepts');
+        $wcaVal = $this->extractScoreValue($inputData, 'word_classes_a') ?? $wcVal;
+        $fdaVal = $this->extractScoreValue($inputData, 'following_directions_a') ?? $fdVal;
+
+        // Subtests (Expressive & Structure)
+        $wsVal  = $this->extractScoreValue($inputData, 'word_structure');
+        $fsVal  = $this->extractScoreValue($inputData, 'formulated_sentences');
+        $rsVal  = $this->extractScoreValue($inputData, 'recalling_sentences');
+        $scaVal = $this->extractScoreValue($inputData, 'sentence_comprehension_a') ?? $scVal;
+        $wsbVal = $this->extractScoreValue($inputData, 'word_structure_b') ?? $wsVal;
+        $fsbVal = $this->extractScoreValue($inputData, 'formulated_sentences_b') ?? $fsVal;
+        $rsbVal = $this->extractScoreValue($inputData, 'recalling_sentences_b') ?? $rsVal;
+
+        // Classify
+        $coreCl = AssessmentScorer::classifyStandardScore($coreScoreVal);
+        $repCl  = AssessmentScorer::classifyStandardScore($repScoreVal);
+        $expCl  = AssessmentScorer::classifyStandardScore($expScoreVal);
+        $cntCl  = AssessmentScorer::classifyStandardScore($cntScoreVal);
+        $strCl  = AssessmentScorer::classifyStandardScore($strScoreVal);
+
+        $scCl  = AssessmentScorer::classifyScaledScore($scVal);
+        $wcCl  = AssessmentScorer::classifyScaledScore($wcVal);
+        $fdCl  = AssessmentScorer::classifyScaledScore($fdVal);
+        $lcCl  = AssessmentScorer::classifyScaledScore($lcVal);
+        $wcaCl = AssessmentScorer::classifyScaledScore($wcaVal);
+        $fdaCl = AssessmentScorer::classifyScaledScore($fdaVal);
+
+        $wsCl  = AssessmentScorer::classifyScaledScore($wsVal);
+        $fsCl  = AssessmentScorer::classifyScaledScore($fsVal);
+        $rsCl  = AssessmentScorer::classifyScaledScore($rsVal);
+        $scaCl = AssessmentScorer::classifyScaledScore($scaVal);
+        $wsbCl = AssessmentScorer::classifyScaledScore($wsbVal);
+        $fsbCl = AssessmentScorer::classifyScaledScore($fsbVal);
+        $rsbCl = AssessmentScorer::classifyScaledScore($rsbVal);
+
+        // Helper for subtest clinical phrasing
+        $subtestAbilityPhrase = function($scoreVal, $him_her) {
+            $val = (float) ($scoreVal ?? 10);
+            return ($val > 6) ? "age-appropriate abilities." : "a weakness for {$him_her}.";
+        };
+
+        $paragraphs = [];
+
+        // Intro & Core Language
+        $coreScoreNum = (float) ($coreCl['score'] ?? 100);
+        if ($coreScoreNum < 85 && $coreScoreNum > 80) {
+            $croText = "While {$possName} score is {$coreCl['range']}, this score is not considered to be concerning at this time. " . ucfirst($his_her) . " performance across subtests and indices are explained in further detail below:";
+        } elseif ($coreScoreNum < 85) {
+            $croText = "{$possName} score indicates that {$he_she} may be struggling with a language disorder. " . ucfirst($his_her) . " performance across subtests and indices are explained in further detail below:";
+        } else {
+            $croText = ucfirst($his_her) . " scores across subtests and indices are explained in further detail below:";
+        }
+
+        $coreLanguagePart = "";
+        if (!$excludeCoreLanguage) {
+            $coreLanguagePart = " <span class=\"core_language_score-row\">{$name} received a Core Language score within the {$coreCl['range']} range (SS= {$coreCl['score']};PR= {$coreCl['percentile']}). The Core Language score is a measure of general language ability, it is comprised of the Receptive Language Index and Expressive Language Index. <span class=\"cro\">{$croText}</span></span>";
+        }
+
+        $introP = "<p class=''>To better understand {$possName} language and communication skills {$he_she} was administered The Clinical Evaluation of Language Fundamentals, Fifth Edition (CELF-5). The CELF-5 is a language assessment that was designed to assess a student's language and communication skills in a variety of contexts, determine the presence of a language disorder, describe the nature of the language disorder, and can be used to plan for intervention or treatment based on the identified needs. The scaled score for each test of the CELF-5 is based on a mean of 10 with an average range of 7 to 13. The standard score for the Core Language Score and Index Scores are based on a mean of 100 with a standard deviation of 15 and an average range of 85 to 115.{$coreLanguagePart}</p>";
+        $paragraphs[] = $introP;
+
+        // Receptive Language Index
+        if (!$excludeReceptive) {
+            $repScoreNum = (float) ($repCl['score'] ?? 100);
+            $reLText = ($repScoreNum <= 84) ? " {$name}'s performance on this index suggests that {$he_she} may be struggling to understand words and language at a rate commensurate with {$his_her} peers." : "";
+            $pRep = "<p class='receptive_language_index-row'>Receptive Language Index: This is a measure of {$possName} listening and auditory comprehension skills. " . ucfirst($he_she) . " received a Receptive Language Index score within the {$repCl['range']} range (SS= {$repCl['score']};PR= {$repCl['percentile']}).{$reLText} This index score is comprised of the Sentence Comprehension, Word Classes, and Following Directions subtests.</p>";
+            $paragraphs[] = $pRep;
+
+            $pSc = "<p class='receptive_language_index-row v'><span class=\"indent_p\"></span>Sentence Comprehension: This subtest was used to evaluate {$possName} ability to interpret spoken sentences of increasing length and complexity and select the pictures that illustrated referential meaning of the sentence. " . ucfirst($he_she) . " received a score within the {$scCl['range']} range, indicating " . $subtestAbilityPhrase($scVal, $him_her) . " In a classroom environment, sentence comprehension and the understanding of relationships among spoken language, real-life references, and situations are emphasized when listening to stories or descriptions of events, as well as when matching sentences that are spoken or read to pictured references.</p>";
+            $paragraphs[] = $pSc;
+
+            $pWc = "<p class='receptive_language_index-row v'><span class=\"indent_p\"></span>Word Classes: This subtest was used to measure {$possName} ability to understand relationships between words based on semantic class features, function, or place/time of occurrence. " . ucfirst($he_she) . " received a score within the {$wcCl['range']} range, indicating " . $subtestAbilityPhrase($wcVal, $him_her) . " In a classroom environment, the knowledge and precise use of words for expressing meanings in written text is emphasized by comparing and contrasting related words for shared and non-shared meaning features, classifying words by semantic classes to form concept categories and semantic networks, and using antonyms and synonyms.</p>";
+            $paragraphs[] = $pWc;
+
+            $pFd = "<p class='receptive_language_index-row v'><span class=\"indent_p\"></span>Following Directions: This subtest was used to evaluate {$possName} ability to interpret spoken directions of increasing length and complexity by being asked to point to different shapes in a certain order among an array of shapes. This subtest also measures short-term and procedural memory abilities. {$name} received a score within the {$fdCl['range']} range, indicating " . $subtestAbilityPhrase($fdVal, $him_her) . " In a classroom environment comprehension, recall, and the ability to act upon spoken directions are essential for achieving in all subject areas and for internalizing scripts and rules for behavior. Remembering spoken directions supports the student’s ability to internalize scripts and rules for behavior, and for completing assignments or projects in school and at home.</p>";
+            $paragraphs[] = $pFd;
+        }
+
+        // Expressive Language Index
+        if (!$excludeExpressive) {
+            $pExp = "<p class='expressive_language_index-row'>Expressive Language Index: This index measured how well {$name} can communicate {$his_her} wants and needs as well as {$his_her} ability to use intentionality, vocabulary, semantics (word/sentence meaning), morphology, and syntax (grammar rules). {$name} received an Expressive Language Index score within the {$expCl['range']} range (SS= {$expCl['score']};PR= {$expCl['percentile']}). This index score is comprised of the Word Structure, Formulated Sentences, and Recalling Sentences subtests.</p>";
+            $paragraphs[] = $pExp;
+
+            $pWs = "<p class='expressive_language_index-row'><span class=\"indent_p\"></span>Word Structure: This subtest measured {$possName} ability to apply word structure rules to mark inflection, derivations, and comparisons, as well as {$his_her} ability to select and use appropriate pronouns to refer to people, objects, and possessive relationships. {$name} received a score within the {$wsCl['range']} range, indicating " . $subtestAbilityPhrase($wsVal, $him_her) . " In a classroom environment, the use of word structure rules is emphasized by matching word forms to pictures; substituting pronouns for nouns; indicating number, time, and possessive relationships; making comparisons of characteristics; describing pictures and events; and other tasks.</p>";
+            $paragraphs[] = $pWs;
+
+            $pFs = "<p class='expressive_language_index-row'><span class=\"indent_p\"></span>Formulated Sentences: This subtest was used to evaluate {$possName} ability to formulate complete, semantically, and grammatically correct, spoken sentences of increasing length and complexity using given words and contextual constraints imposed by illustrations. This is also a measure or working memory. " . ucfirst($he_she) . " received a score within the {$fsCl['range']} range, indicating " . $subtestAbilityPhrase($fsVal, $him_her) . " In a classroom environment, the ability to formulate complete semantically-, syntactically-, and pragmatically-acceptable spoken and written sentences of increasing complexity is emphasized in (a) storytelling, (b) sentence completion, combination, and transformation activities, (c) written text, and (d) editing text and other literacy activities.</p>";
+            $paragraphs[] = $pFs;
+
+            $pRs = "<p class='expressive_language_index-row'><span class=\"indent_p\"></span>Recalling Sentences: This subtest measured {$possName} ability to listen to spoken sentences of increasing length and complexity and repeat the sentences without changing word meaning and content, word structure (morphology), or sentence structure (syntax). " . ucfirst($his_her) . " score on this subtest fell within the {$rsCl['range']} range, indicating " . $subtestAbilityPhrase($rsVal, $him_her) . " In a classroom environment, the ability to remember spoken sentences of increasing complexity in meaning and structure is required for following directions and academic instructions, writing to dictation, copying and note taking, learning vocabulary and related words, and subject content.</p>";
+            $paragraphs[] = $pRs;
+        }
+
+        // Language Content Index
+        if (!$excludeLanguageContent) {
+            $pCnt = "<p class='language_content_index-row'>Language Content Index: This index measures various aspects of semantic development, including vocabulary, concept and category development, comprehension of associations and relationships among words, interpretation of factual and inferential information presented orally, and the ability to create meaningfully semantically- and syntactically- correct sentences. {$name} received a Language Content Index score within the {$cntCl['range']} range (SS= {$cntCl['score']};PR= {$cntCl['percentile']}). This index score is comprised of the Linguistic Concepts, Word Classes, and the Following Directions subtests.</p>";
+            $paragraphs[] = $pCnt;
+
+            $pLc = "<p class='language_content_index-row'><span class=\"indent_p\"></span>Linguistic Concepts: This subtest was used to measure {$possName} ability to interpret spoken directions with basic concepts, which requires logical operations such as inclusion and exclusion, orientation and timing, and identifying mentioned objects from several pictured choices. " . ucfirst($he_she) . " received a score within the {$lcCl['range']} range, indicating " . $subtestAbilityPhrase($lcVal, $him_her) . " In a classroom environment, well developed linguistic concept skills aid in the understanding of basic concepts such as and, before, or after is essential for following directions for hands-on activities, lessons, projects, and other assignments.</p>";
+            $paragraphs[] = $pLc;
+
+            if ($excludeReceptive) {
+                // If receptive was excluded, render Word Classes and Following Directions under Content
+                $pWca = "<p class='language_content_index-row'><span class=\"indent_p\"></span>Word Classes: This subtest was used to measure {$possName} ability to understand relationships between words based on semantic class features, function, or place/time of occurrence. " . ucfirst($he_she) . " received a score within the {$wcaCl['range']} range, indicating " . $subtestAbilityPhrase($wcaVal, $him_her) . " In a classroom environment, the knowledge and precise use of words for expressing meanings in written text is emphasized by comparing and contrasting related words for shared and non-shared meaning features, classifying words by semantic classes to form concept categories and semantic networks, and using antonyms and synonyms.</p>";
+                $paragraphs[] = $pWca;
+
+                $pFda = "<p class='language_content_index-row'><span class=\"indent_p\"></span>Following Directions: This subtest was used to evaluate {$possName} ability to interpret spoken directions of increasing length and complexity by being asked to point to different shapes in a certain order among an array of shapes. This subtest also measures short-term and procedural memory abilities. {$name} received a score within the {$fdaCl['range']} range, indicating " . $subtestAbilityPhrase($fdaVal, $him_her) . " In a classroom environment comprehension, recall, and the ability to act upon spoken directions are essential for achieving in all subject areas and for internalizing scripts and rules for behavior. Remembering spoken directions supports the student’s ability to internalize scripts and rules for behavior, and for completing assignments or projects in school and at home.</p>";
+                $paragraphs[] = $pFda;
+            }
+        }
+
+        // Language Structure Index
+        if (!$excludeLanguageStructure) {
+            $pStr = "<p class='language_structure_index-row'>Language Structure Index: The Language Structure index is an overall measure of receptive and expressive components of interpreting and producing sentence structure. {$name} received an overall Language Structure score within the {$strCl['range']} range (SS= {$strCl['score']};PR= {$strCl['percentile']}). The Language Structure index is comprised of the Sentence Comprehension, Word Structure, Formulated Sentences, and Recalling Sentences subtests.</p>";
+            $paragraphs[] = $pStr;
+
+            if ($excludeReceptive || $excludeExpressive) {
+                // If either receptive or expressive was excluded, render subtests under Language Structure
+                if ($excludeReceptive) {
+                    $pSca = "<p class='language_structure_index-row'><span class=\"indent_p\"></span>Sentence Comprehension: This subtest was used to evaluate {$possName} ability to interpret spoken sentences of increasing length and complexity and select the pictures that illustrated referential meaning of the sentence. " . ucfirst($he_she) . " received a score within the {$scaCl['range']} range, indicating " . $subtestAbilityPhrase($scaVal, $him_her) . " In a classroom environment, sentence comprehension and the understanding of relationships among spoken language, real-life references, and situations are emphasized when listening to stories or descriptions of events, as well as when matching sentences that are spoken or read to pictured references.</p>";
+                    $paragraphs[] = $pSca;
+                }
+                if ($excludeExpressive) {
+                    $pWsb = "<p class='language_structure_index-row'><span class=\"indent_p\"></span>Word Structure: This subtest measured {$possName} ability to apply word structure rules to mark inflection, derivations, and comparisons, as well as {$his_her} ability to select and use appropriate pronouns to refer to people, objects, and possessive relationships. {$name} received a score within the {$wsbCl['range']} range, indicating " . $subtestAbilityPhrase($wsbVal, $him_her) . " In a classroom environment, the use of word structure rules is emphasized by matching word forms to pictures; substituting pronouns for nouns; indicating number, time, and possessive relationships; making comparisons of characteristics; describing pictures and events; and other tasks.</p>";
+                    $paragraphs[] = $pWsb;
+
+                    $pFsb = "<p class='language_structure_index-row'><span class=\"indent_p\"></span>Formulated Sentences: This subtest was used to evaluate {$possName} ability to formulate complete, semantically, and grammatically correct, spoken sentences of increasing length and complexity using given words and contextual constraints imposed by illustrations. This is also a measure or working memory. " . ucfirst($he_she) . " received a score within the {$fsbCl['range']} range, indicating " . $subtestAbilityPhrase($fsbVal, $him_her) . " In a classroom environment, the ability to formulate complete semantically-, syntactically-, and pragmatically-acceptable spoken and written sentences of increasing complexity is emphasized in (a) storytelling, (b) sentence completion, combination, and transformation activities, (c) written text, and (d) editing text and other literacy activities.</p>";
+                    $paragraphs[] = $pFsb;
+
+                    $pRsb = "<p class='language_structure_index-row'><span class=\"indent_p\"></span>Recalling Sentences: This subtest measured {$possName} ability to listen to spoken sentences of increasing length and complexity and repeat the sentences without changing word meaning and content, word structure (morphology), or sentence structure (syntax). " . ucfirst($his_her) . " score on this subtest fell within the {$rsbCl['range']} range, indicating " . $subtestAbilityPhrase($rsbVal, $him_her) . " In a classroom environment, the ability to remember spoken sentences of increasing complexity in meaning and structure is required for following directions and academic instructions, writing to dictation, copying and note taking, learning vocabulary and related words, and subject content.</p>";
+                    $paragraphs[] = $pRsb;
+                }
+            }
+        }
+
+        $narrativeHtml = implode("\n\n", $paragraphs);
+
+        // Build scoresEvaluated map
+        $scoresEvaluated = [
+            'core_language_score'       => $coreCl,
+            'receptive_language_index'  => $repCl,
+            'sentence_comprehension'    => $scCl,
+            'word_classes'              => $wcCl,
+            'following_directions'      => $fdCl,
+            'expressive_language_index' => $expCl,
+            'word_structure'            => $wsCl,
+            'formulated_sentences'      => $fsCl,
+            'recalling_sentences'       => $rsCl,
+            'language_content_index'    => $cntCl,
+            'linguistic_concepts'       => $lcCl,
+            'word_classes_a'            => $wcaCl,
+            'following_directions_a'    => $fdaCl,
+            'language_structure_index'  => $strCl,
+            'sentence_comprehension_a'  => $scaCl,
+            'word_structure_b'          => $wsbCl,
+            'formulated_sentences_b'    => $fsbCl,
+            'recalling_sentences_b'     => $rsbCl,
+        ];
+
+        $result = [
+            'examinee'         => $context['examinee_name'],
+            'pronouns'         => $context,
+            'scores_evaluated' => $scoresEvaluated,
+            'narrative_html'   => $narrativeHtml,
+        ];
+
+        if ( $hasBellCurve ) {
+            $tplName = (string) ( $templateRow['template_name'] ?? 'CELF-5' );
+            $bars = [];
+            $bellCurveScales = [
+                'core_language_score'       => 'Core Language Score',
+                'receptive_language_index'  => 'Receptive Language Index',
+                'expressive_language_index' => 'Expressive Language Index',
+                'language_content_index'    => 'Language Content Index',
+                'language_structure_index'  => 'Language Structure Index',
             ];
             foreach ( $bellCurveScales as $bKey => $bLabel ) {
                 $val = $scoresEvaluated[ $bKey ]['score'] ?? null;
