@@ -70,6 +70,15 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
             );
         }
 
+        if ( 'report-brief-2-self-report' === $slug ) {
+            return $this->processBrief2SelfReport(
+                $templateRow,
+                $inputData,
+                $context,
+                $tScoreProfile
+            );
+        }
+
         $context['raters_intro'] = InformantManager::buildRatersIntro( $informants, $activeRatersCount, $context['possessive'] );
 
         $isPreschool  = $this->isFlagActive( $inputData['pre_school_h'] ?? null );
@@ -1396,6 +1405,126 @@ final class NormativeTScoreProcessor implements ArchetypeProcessorInterface {
         }
 
         return null;
+    }
+
+    /**
+     * Specialized processor for BRIEF-2 Self-Report Form.
+     * Generates the comprehensive 5-paragraph clinical narrative matching ClickReport standards.
+     */
+    private function processBrief2SelfReport(
+        array $templateRow,
+        array $inputData,
+        array $context,
+        string $tScoreProfile
+    ): array {
+        $name     = ! empty( $context['name'] ) ? esc_html( $context['name'] ) : 'the examinee';
+        $possName = ! empty( $context['possessive_name'] ) ? esc_html( $context['possessive_name'] ) : "the examinee's";
+        $his_her  = ! empty( $context['possessive'] ) ? esc_html( $context['possessive'] ) : 'his';
+        $he_she   = ! empty( $context['pronoun'] ) ? esc_html( $context['pronoun'] ) : 'he';
+
+        // Extract Validity Scales
+        $negOne = strtolower( trim( (string) ( $inputData['negativity'] ?? ( $inputData['newOne'] ?? ( $inputData['negOne'] ?? 'acceptable' ) ) ) ) );
+        $incOne = strtolower( trim( (string) ( $inputData['inconsistency'] ?? ( $inputData['incOne'] ?? 'acceptable' ) ) ) );
+        $infOne = strtolower( trim( (string) ( $inputData['infrequency'] ?? ( $inputData['infOne'] ?? 'acceptable' ) ) ) );
+
+        $scaleMeta = [
+            'gec'               => [ 'title' => 'Global Executive Composite (GEC)', 'type' => 'clinical' ],
+            'bri'               => [ 'title' => 'Behavior Regulation Index (BRI)', 'type' => 'clinical' ],
+            'inhibit'           => [ 'title' => 'Inhibit', 'type' => 'clinical' ],
+            'selfmonitor'       => [ 'title' => 'Self-Monitor', 'type' => 'clinical' ],
+            'eri'               => [ 'title' => 'Emotion Regulation Index (ERI)', 'type' => 'clinical' ],
+            'shift'             => [ 'title' => 'Shift', 'type' => 'clinical' ],
+            'emotional_control' => [ 'title' => 'Emotional Control', 'type' => 'clinical' ],
+            'cri'               => [ 'title' => 'Cognitive Regulation Index (CRI)', 'type' => 'clinical' ],
+            'task_completion'   => [ 'title' => 'Task-Completion', 'type' => 'clinical' ],
+            'working_memory'    => [ 'title' => 'Working Memory', 'type' => 'clinical' ],
+            'planorganize'      => [ 'title' => 'Plan/Organize', 'type' => 'clinical' ],
+        ];
+
+        $getRange = function( $val ) {
+            if ( null === $val || '' === $val || 'N/A' === $val ) {
+                return 'average';
+            }
+            $v = (float) $val;
+            if ( $v > 59 ) {
+                if ( $v >= 60 && $v <= 64 ) {
+                    return 'mildly elevated';
+                }
+                if ( $v >= 65 && $v <= 69 ) {
+                    return 'potentially clinically elevated';
+                }
+                return 'clinically elevated';
+            }
+            return 'average';
+        };
+
+        $scoresEvaluated = [];
+        $ranges          = [];
+
+        foreach ( $scaleMeta as $sKey => $m ) {
+            $rawVal = $this->extractRaterScoreValue( $inputData, $sKey, 1 );
+            // Fallback for task_completion
+            if ( null === $rawVal && 'task_completion' === $sKey ) {
+                $rawVal = $inputData['task_completion_1'] ?? ( $inputData['task_completion'] ?? null );
+            }
+            $classified               = AssessmentScorer::classifyTScoreByProfile( $rawVal, $m['type'], $tScoreProfile );
+            $ranges[ $sKey ]          = $getRange( $rawVal );
+            $scoresEvaluated[ $sKey ] = [
+                'title'      => $m['title'],
+                'scale_type' => $m['type'],
+                'profile'    => $tScoreProfile,
+                'raters'     => [ 1 => $classified ],
+            ];
+        }
+
+        // Paragraph 1: Executive Functioning Intro + GEC
+        $p1  = "Executive functions are a collection of processes that are responsible for guiding, directing, and managing cognitive, emotional, and behavioral functions, particularly during active, novel problem solving. In order to obtain information regarding {$possName} executive functioning at school and at home, the Behavior Rating Inventory of Executive Function, Second Edition (BRIEF-2) Self-Report Form was completed. The BRIEF-2 is designed for individuals ages 11 to 18 for whom there may be a concern about self-regulation. BRIEF-2 T-scores have a mean of 50 and a standard deviation of 10. BRIEF-2 scores 60-64 are considered mildly elevated, scores 65-69 are considered potentially clinically elevated and scores of 70 and above are typically considered clinically elevated or clinically significant. {$possName} functioning was assessed through three broad Composites: Behavior Regulation, Emotion Regulation, and Cognitive Regulation. The BRIEF-2 also provides a Global Executive Composite (GEC) score that serves as an overall estimate of executive functioning. {$name} rated {$his_her} overall executive functioning (GEC) to be within the " . $ranges['gec'] . ' range.';
+
+        // Paragraph 2: Behavior Regulation Index
+        $p2  = "Behavior Regulation Index: This composite represents a student's ability to regulate and monitor behavior effectively. {$name} rated {$his_her} overall level of behavior regulation in the " . $ranges['bri'] . " range. Specifically, {$name} rated {$his_her} ability to control {$his_her} impulses (inhibit) within the " . $ranges['inhibit'] . " range and {$his_her} ability to self-monitor within the " . $ranges['selfmonitor'] . ' range.';
+
+        // Paragraph 3: Emotion Regulation Index
+        $p3  = "Emotional Regulation Index: The Emotion Regulation Index (ERI) represents a student's ability to regulate emotional responses including responding to changing situations. {$name} rated {$his_her} overall level of emotional regulation skills within the " . $ranges['eri'] . " range. Specifically, {$name} rated {$his_her} ability to transition (Shift) to be within the " . $ranges['shift'] . " range and ability to regulate {$his_her} emotions (Emotional Control) to be within the " . $ranges['emotional_control'] . ' range.';
+
+        // Paragraph 4: Cognitive Regulation Index
+        $p4  = "Cognitive Regulation Index: The Cognitive Regulation Index (CRI) represents a student's ability to control and manage cognitive processes and problem-solve effectively. Based on self-ratings, {$name} rated {$his_her} overall CRI ability to be within the " . $ranges['cri'] . " range. Specifically, {$name} rated {$his_her} ability to complete tasks appropriately and/or in a timely manner (Task-Completion) to be within the " . $ranges['task_completion'] . " range and {$his_her} ability to hold information in {$his_her} mind to be within the " . $ranges['working_memory'] . " range. {$name} also rated {$his_her} ability to set goals and successfully follow through with a plan aimed at reaching those goals, within the " . $ranges['planorganize'] . ' range.';
+
+        // Paragraph 5: Validity Scales
+        $brief_2_contant = '';
+        if ( $negOne === 'acceptable' && $incOne === 'acceptable' && $infOne === 'acceptable' ) {
+            $brief_2_contant = "{$name}'s Inconsistency, Infrequency, and Negativity Indices were all considered to be acceptable, indicating that these ratings are likely a valid representation of {$name}'s current behavioral functioning at this time.";
+        } elseif ( $negOne !== 'acceptable' && $incOne === 'acceptable' && $infOne === 'acceptable' ) {
+            $brief_2_contant = "While {$name}'s ratings were considered acceptable for appropriate frequency and consistency, the Negativity scale indicates responses that were excessively negative, and the validity of these scores was in the {$negOne} range.";
+        } elseif ( $negOne === 'acceptable' && $incOne === 'acceptable' && $infOne !== 'acceptable' ) {
+            $brief_2_contant = "While {$name}'s ratings were considered acceptable for the Negativity Index and appropriate consistency, the Infrequency Index indicates that these scores are considered to have {$infOne} validity.";
+        } elseif ( $negOne === 'acceptable' && $incOne !== 'acceptable' && $infOne === 'acceptable' ) {
+            $brief_2_contant = "While {$name}'s ratings were considered acceptable for the Negativity Index and Infrequency Index, the Inconsistency index indicates that these scores have {$incOne} validity.";
+        } else {
+            $brief_2_contant = "{$name}'s Inconsistency, Infrequency, and Negativity Indices indicated that the results of these ratings should be interpreted with caution, and are likely not a valid representation of {$name}'s current behavioral functioning.";
+        }
+
+        if ( $infOne !== 'acceptable' ) {
+            $brief_2_contant .= ' The Infrequency Index identifies when the rater has used a pattern to mark answers (i.e. S,A,N,S,A,N,S,A,N).';
+        }
+        if ( $incOne !== 'acceptable' ) {
+            $brief_2_contant .= ' The Inconsistency Index identifies situations when the rater has given inconsistent responses to items that are typically answered in a similar way.';
+        }
+
+        $p5 = "The BRIEF-2 Rating Scales assess a rater's response pattern to determine how results should be interpreted. {$brief_2_contant}";
+
+        $html  = "<p class='executiveFunctioning-header'><strong>Executive Functioning</strong></p>";
+        $html .= "<p class='executiveFunctioning'>" . trim( $p1 ) . '</p>';
+        $html .= "<p class='behavioral_regulation_index'>" . trim( $p2 ) . '</p>';
+        $html .= "<p class='emotional_regulation_index'>" . trim( $p3 ) . '</p>';
+        $html .= "<p class='cognitive_regulation_index'>" . trim( $p4 ) . '</p>';
+        $html .= "<p class='brief_2_rating_salses'>" . trim( $p5 ) . '</p>';
+
+        return [
+            'examinee'         => $context['examinee_name'],
+            'pronouns'         => $context,
+            'scores_evaluated' => $scoresEvaluated,
+            'narrative_html'   => $html,
+        ];
     }
 }
 
